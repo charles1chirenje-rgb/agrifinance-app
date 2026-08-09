@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Marketplace</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Farmer to farmer</span>
+        <h1>Marketplace</h1>
+      </div>
+      <button class="btn btn-primary btn-sm" id="addBtn">+ List something</button>
+    </div>
+
+    <div class="section-toolbar">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="filterCategory" style="width:auto;">
+          <option value="">All categories</option>
+          <option value="produce">Produce</option>
+          <option value="livestock">Livestock</option>
+          <option value="inputs">Inputs</option>
+          <option value="equipment">Equipment</option>
+          <option value="labour">Labour</option>
+        </select>
+        <select id="filterDeal" style="width:auto;">
+          <option value="">Sell, buy &amp; barter</option>
+          <option value="sell">Selling</option>
+          <option value="buy">Wanted</option>
+          <option value="barter">Barter</option>
+        </select>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--ink-soft);">
+        <input type="checkbox" id="mineOnly" style="width:auto;"> My listings only
+      </label>
+    </div>
+
+    <div class="listing-grid" id="grid"><p>Loading…</p></div>
+  </main>
+</div>
+
+<div class="modal-backdrop hidden" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="margin:0;">List something on the marketplace</h3>
+      <button class="modal-close" id="addClose">&times;</button>
+    </div>
+    <div id="addError" class="error-msg hidden"></div>
+    <form id="addForm">
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="fTitle" required placeholder="e.g. 20 bags of maize, 50kg">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Category</label>
+          <select id="fCategory">
+            <option value="produce">Produce</option>
+            <option value="livestock">Livestock</option>
+            <option value="inputs">Inputs</option>
+            <option value="equipment">Equipment</option>
+            <option value="labour">Labour</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Deal type</label>
+          <select id="fDealType">
+            <option value="sell">Selling</option>
+            <option value="buy">Wanted / buying</option>
+            <option value="barter">Barter</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Quantity</label>
+          <input type="number" id="fQuantity" step="0.01" placeholder="20">
+        </div>
+        <div class="field">
+          <label>Unit</label>
+          <input type="text" id="fUnit" placeholder="50kg bags">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Price (per unit)</label>
+          <input type="number" id="fPrice" step="0.01" placeholder="15">
+        </div>
+        <div class="field">
+          <label>Currency</label>
+          <select id="fCurrency">
+            <option value="USD">USD</option>
+            <option value="ZiG">ZiG</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Location</label>
+        <input type="text" id="fLocation" placeholder="e.g. Chiredzi">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="fDescription" placeholder="Any details a buyer/seller should know"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Post listing</button>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  const user = API.currentUser();
+
+  function query() {
+    const params = new URLSearchParams();
+    const category = document.getElementById('filterCategory').value;
+    const dealType = document.getElementById('filterDeal').value;
+    const mine = document.getElementById('mineOnly').checked;
+    if (category) params.set('category', category);
+    if (dealType) params.set('dealType', dealType);
+    if (mine) params.set('mine', 'true');
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  }
+
+  function money(n, currency) {
+    return `${currency === 'ZiG' ? 'ZiG' : '$'}${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  async function load() {
+    const grid = document.getElementById('grid');
+    try {
+      const d = await API.get('/marketplace' + query());
+      if (!d.listings.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Nothing listed yet — be the first to post.</div>`;
+        return;
+      }
+      grid.innerHTML = d.listings.map(l => `
+        <div class="listing-card fade-in">
+          <div class="listing-top">
+            <span class="deal-badge deal-${l.dealType}">${l.dealType === 'buy' ? 'Wanted' : l.dealType}</span>
+            <span class="tag-pill">${l.category}</span>
+          </div>
+          <h3 style="margin:0;font-size:1rem;">${l.title}</h3>
+          ${l.description ? `<p style="margin:0;font-size:0.82rem;">${l.description}</p>` : ''}
+          <div class="listing-meta">
+            ${l.quantity ? `<span>${l.quantity} ${l.unit || ''}</span>` : ''}
+            ${l.location ? `<span>${l.location}</span>` : ''}
+          </div>
+          <div class="listing-price">${l.dealType === 'barter' ? 'Barter' : money(l.price, l.currency)}</div>
+          <div class="listing-seller">${l.sellerName}${l.farmName ? ' &middot; ' + l.farmName : ''}</div>
+          ${l.userId === user.id ? `
+            <div style="display:flex;gap:8px;margin-top:6px;">
+              ${l.status === 'active' ? `<button class="btn btn-secondary btn-sm" data-fulfill="${l._id}" style="flex:1;">Mark fulfilled</button>` : `<span class="stamp-badge badge-repaid" style="flex:1;text-align:center;">Fulfilled</span>`}
+              <button class="btn btn-danger btn-sm" data-del="${l._id}">Delete</button>
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('[data-fulfill]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try {
+            await API.patch(`/marketplace/${btn.dataset.fulfill}`, { status: 'fulfilled' });
+            Toast.success('Marked as fulfilled');
+            load();
+          } catch (err) { Toast.error(err.message); }
+        });
+      });
+      grid.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ok = await Modal.confirm('Delete this listing?', { danger: true });
+          if (!ok) return;
+          try {
+            await API.del(`/marketplace/${btn.dataset.del}`);
+            Toast.success('Listing deleted');
+            load();
+          } catch (err) { Toast.error(err.message); }
+        });
+      });
+    } catch (err) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Could not load the marketplace right now.</div>`;
+    }
+  }
+
+  document.getElementById('filterCategory').addEventListener('change', load);
+  document.getElementById('filterDeal').addEventListener('change', load);
+  document.getElementById('mineOnly').addEventListener('change', load);
+
+  const addModal = document.getElementById('addModal');
+  document.getElementById('addBtn').addEventListener('click', () => addModal.classList.remove('hidden'));
+  document.getElementById('addClose').addEventListener('click', () => addModal.classList.add('hidden'));
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('addError');
+    errorBox.classList.add('hidden');
+    try {
+      await API.post('/marketplace', {
+        title: document.getElementById('fTitle').value.trim(),
+        category: document.getElementById('fCategory').value,
+        dealType: document.getElementById('fDealType').value,
+        quantity: document.getElementById('fQuantity').value,
+        unit: document.getElementById('fUnit').value,
+        price: document.getElementById('fPrice').value,
+        currency: document.getElementById('fCurrency').value,
+        location: document.getElementById('fLocation').value,
+        description: document.getElementById('fDescription').value
+      });
+      addModal.classList.add('hidden');
+      document.getElementById('addForm').reset();
+      Toast.success('Listing posted');
+      load();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.remove('hidden');
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

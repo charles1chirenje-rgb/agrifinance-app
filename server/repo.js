@@ -13,7 +13,9 @@ const modelMap = () => ({
   loans: mongooseModels && mongooseModels.Loan,
   crops: mongooseModels && mongooseModels.Crop,
   livestock: mongooseModels && mongooseModels.Livestock,
-  events: mongooseModels && mongooseModels.Event
+  events: mongooseModels && mongooseModels.Event,
+  listings: mongooseModels && mongooseModels.Listing,
+  posts: mongooseModels && mongooseModels.Post
 });
 
 function toPlain(doc) {

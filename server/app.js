@@ -23,6 +23,10 @@ app.use('/api/assistant', require('./routes/assistant'));
 app.use('/api/weather', require('./routes/weather'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/export', require('./routes/export'));
+app.use('/api/score', require('./routes/score'));
+app.use('/api/advisor', require('./routes/advisor'));
+app.use('/api/marketplace', require('./routes/marketplace'));
+app.use('/api/community', require('./routes/community'));
 
 app.get('/api/health', (req, res) => {
   const { USE_MONGO } = require('./db');

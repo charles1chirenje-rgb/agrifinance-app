@@ -13,7 +13,9 @@
     { href: '/crops.html', label: 'Crops' },
     { href: '/livestock.html', label: 'Livestock' },
     { href: '/forecast.html', label: 'Forecast' },
-    { href: '/roi.html', label: 'ROI' }
+    { href: '/roi.html', label: 'ROI' },
+    { href: '/marketplace.html', label: 'Marketplace' },
+    { href: '/community.html', label: 'Community' }
   ];
   if (user.role === 'admin') links.push({ href: '/admin.html', label: 'Admin' });
 

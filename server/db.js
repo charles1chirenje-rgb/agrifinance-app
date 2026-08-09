@@ -36,7 +36,9 @@ function initLocal() {
     loans: [],
     crops: [],
     livestock: [],
-    events: [] // audit / activity feed powering the "live" dashboards
+    events: [], // audit / activity feed powering the "live" dashboards
+    listings: [], // community marketplace: produce/inputs/equipment for sale or barter
+    posts: [] // community knowledge feed: tips, questions, alerts, success stories
   }).write();
   lowdbInstance = db;
 }
@@ -53,7 +55,9 @@ function initMongo() {
     Loan: require('./models/Loan'),
     Crop: require('./models/Crop'),
     Livestock: require('./models/Livestock'),
-    Event: require('./models/Event')
+    Event: require('./models/Event'),
+    Listing: require('./models/Listing'),
+    Post: require('./models/Post')
   };
 }
 
@@ -93,6 +97,8 @@ module.exports = {
     loans: collection('loans'),
     crops: collection('crops'),
     livestock: collection('livestock'),
-    events: collection('events')
+    events: collection('events'),
+    listings: collection('listings'),
+    posts: collection('posts')
   }
 };

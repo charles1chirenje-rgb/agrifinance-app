@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Community</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content" style="max-width:760px;">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Farmer to farmer</span>
+        <h1>Community</h1>
+      </div>
+      <button class="btn btn-primary btn-sm" id="addBtn">+ New post</button>
+    </div>
+
+    <div class="section-toolbar">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="advisor-tab active" data-tag="">All</button>
+        <button class="advisor-tab" data-tag="tip">Tips</button>
+        <button class="advisor-tab" data-tag="question">Questions</button>
+        <button class="advisor-tab" data-tag="alert">Alerts</button>
+        <button class="advisor-tab" data-tag="success">Success stories</button>
+      </div>
+    </div>
+
+    <div id="feed"><p>Loading…</p></div>
+  </main>
+</div>
+
+<div class="modal-backdrop hidden" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="margin:0;">New community post</h3>
+      <button class="modal-close" id="addClose">&times;</button>
+    </div>
+    <div id="addError" class="error-msg hidden"></div>
+    <form id="addForm">
+      <div class="field">
+        <label>Type</label>
+        <select id="fTag">
+          <option value="tip">Tip</option>
+          <option value="question">Question</option>
+          <option value="alert">Alert (pest, weather, theft, etc.)</option>
+          <option value="success">Success story</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="fTitle" required placeholder="e.g. Fall armyworm on maize near the river plot">
+      </div>
+      <div class="field">
+        <label>Details</label>
+        <textarea id="fBody" required placeholder="Share what happened, what worked, or what you're asking"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Post</button>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  const user = API.currentUser();
+  let activeTag = '';
+
+  function timeAgo(iso) {
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  }
+
+  async function load() {
+    const feed = document.getElementById('feed');
+    try {
+      const d = await API.get('/community' + (activeTag ? `?tag=${activeTag}` : ''));
+      const posts = d.posts.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      if (!posts.length) {
+        feed.innerHTML = `<div class="empty-state">Nothing posted yet — share the first tip or question.</div>`;
+        return;
+      }
+      feed.innerHTML = posts.map(p => `
+        <div class="post-card fade-in">
+          <div class="post-head">
+            <h3 style="margin:0;font-size:1rem;">${p.title}</h3>
+            <span class="post-tag post-tag-${p.tag}">${p.tag}</span>
+          </div>
+          <div class="post-author">${p.authorName}${p.farmName ? ' &middot; ' + p.farmName : ''} &middot; ${timeAgo(p.createdAt)}</div>
+          <div class="post-body">${p.body}</div>
+          <div class="post-actions">
+            <button class="like-btn ${p.likes.includes(user.id) ? 'liked' : ''}" data-like="${p._id}">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:15px;height:15px;"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+              ${p.likes.length}
+            </button>
+            <span style="font-size:0.8rem;color:var(--ink-soft);">${p.replies.length} repl${p.replies.length === 1 ? 'y' : 'ies'}</span>
+          </div>
+          ${p.replies.length ? `
+            <ul class="reply-list">
+              ${p.replies.map(r => `<li><span class="r-name">${r.name}:</span> ${r.text}</li>`).join('')}
+            </ul>
+          ` : ''}
+          <form class="reply-form" data-reply="${p._id}">
+            <input type="text" placeholder="Reply…" required>
+            <button type="submit" class="btn btn-secondary btn-sm">Reply</button>
+          </form>
+        </div>
+      `).join('');
+
+      feed.querySelectorAll('[data-like]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try { await API.post(`/community/${btn.dataset.like}/like`, {}); load(); }
+          catch (err) { Toast.error(err.message); }
+        });
+      });
+      feed.querySelectorAll('[data-reply]').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const input = form.querySelector('input');
+          try {
+            await API.post(`/community/${form.dataset.reply}/replies`, { text: input.value.trim() });
+            input.value = '';
+            load();
+          } catch (err) { Toast.error(err.message); }
+        });
+      });
+    } catch (err) {
+      feed.innerHTML = `<div class="empty-state">Could not load the community feed right now.</div>`;
+    }
+  }
+
+  document.querySelectorAll('.advisor-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.advisor-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeTag = tab.dataset.tag;
+      load();
+    });
+  });
+
+  const addModal = document.getElementById('addModal');
+  document.getElementById('addBtn').addEventListener('click', () => addModal.classList.remove('hidden'));
+  document.getElementById('addClose').addEventListener('click', () => addModal.classList.add('hidden'));
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('addError');
+    errorBox.classList.add('hidden');
+    try {
+      await API.post('/community', {
+        tag: document.getElementById('fTag').value,
+        title: document.getElementById('fTitle').value.trim(),
+        body: document.getElementById('fBody').value.trim()
+      });
+      addModal.classList.add('hidden');
+      document.getElementById('addForm').reset();
+      Toast.success('Posted to the community feed');
+      load();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.remove('hidden');
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

@@ -32,6 +32,17 @@
 
     <div class="grid grid-2" style="margin-top:22px;align-items:start;">
       <div class="card">
+        <h2>Farm Health Score</h2>
+        <div id="scoreBody"><p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Calculating…</p></div>
+      </div>
+      <div class="card">
+        <h2>Planting advisor</h2>
+        <div id="advisorBody"><p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Checking the calendar and weather…</p></div>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:22px;align-items:start;">
+      <div class="card">
         <h2>Cash position</h2>
         <p>Total income vs. expense recorded to date.</p>
         <canvas id="miniChart" height="200" style="width:100%;height:200px;"></canvas>
@@ -176,10 +187,79 @@
     }
   }
 
+  async function loadScore() {
+    const body = document.getElementById('scoreBody');
+    try {
+      const d = await API.get('/score' + q());
+      if (d.score === null) {
+        body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">${d.message}</p>`;
+        return;
+      }
+      body.innerHTML = `
+        <div class="score-widget">
+          <div class="score-ring" style="--pct:${d.score};">
+            <div class="score-ring-inner">
+              <span class="num">${d.score}</span>
+              <span class="of">/ 100</span>
+            </div>
+          </div>
+          <div class="score-breakdown">
+            <span class="score-level-badge ${d.tone}">${d.level}</span>
+            ${d.breakdown.map(p => `
+              <div class="score-row">
+                <span class="row-label">${p.label}</span>
+                <span class="row-track"><span class="row-fill" style="width:${p.score}%;"></span></span>
+                <span class="row-num">${p.score}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Could not load your Farm Health Score right now.</p>`;
+    }
+  }
+
+  async function loadAdvisor() {
+    const body = document.getElementById('advisorBody');
+    try {
+      const d = await API.get('/advisor');
+      const list = (items) => items.length
+        ? items.map(c => `
+            <div class="advisor-crop">
+              <div><div class="name">${c.crop}</div><div class="note">${c.note}</div></div>
+            </div>
+          `).join('')
+        : `<p style="color:var(--ink-soft);font-size:0.82rem;margin:0;">Nothing new opens up this window.</p>`;
+
+      body.innerHTML = `
+        <div class="insight-card insight-${d.rainfall.tone}" style="margin-bottom:12px;">${d.rainfall.text}</div>
+        <div class="advisor-tabs">
+          <button class="advisor-tab active" data-tab="now">Plant now &middot; ${d.monthName}</button>
+          <button class="advisor-tab" data-tab="next">Coming up &middot; ${d.nextMonthName}</button>
+        </div>
+        <div class="advisor-list" id="advisorNow">${list(d.plantNow)}</div>
+        <div class="advisor-list hidden" id="advisorNext">${list(d.plantNextMonth)}</div>
+      `;
+      body.querySelectorAll('.advisor-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          body.querySelectorAll('.advisor-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById('advisorNow').classList.toggle('hidden', tab.dataset.tab !== 'now');
+          document.getElementById('advisorNext').classList.toggle('hidden', tab.dataset.tab !== 'next');
+        });
+      });
+    } catch (err) {
+      body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Could not load the planting advisor right now.</p>`;
+    }
+  }
+
   loadDashboard();
   loadFeed();
   loadInsights();
-  setInterval(() => { loadDashboard(); loadFeed(); loadInsights(); }, 8000);
+  loadScore();
+  loadAdvisor();
+  setInterval(() => { loadDashboard(); loadFeed(); loadInsights(); loadScore(); }, 8000);
 </script>
 </body>
 </html>
