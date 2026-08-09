@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; ROI Analytics</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Analytics</span>
+        <h1>ROI Analytics</h1>
+      </div>
+    </div>
+
+    <div class="grid grid-4" id="summaryCards"><p>Loading…</p></div>
+
+    <div class="card" style="margin-top:20px;">
+      <h2>Return on investment by enterprise</h2>
+      <p>ROI = (returns &minus; investment) &divide; investment &times; 100. Investment includes recorded acquisition/planting cost plus any linked expenses; returns include sale value plus linked income.</p>
+      <canvas id="roiChart" height="260" style="width:100%;height:260px;"></canvas>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:20px;">
+      <div class="card">
+        <h3>Crops</h3>
+        <div id="cropRoiTable"><p>Loading…</p></div>
+      </div>
+      <div class="card">
+        <h3>Livestock</h3>
+        <div id="livestockRoiTable"><p>Loading…</p></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/chart.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  function money(n) { return `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+  function pct(n) { return n === null || n === undefined ? '—' : `${n.toFixed(1)}%`; }
+
+  function roiTable(rows, nameKey) {
+    if (!rows.length) return '<div class="empty-state">No records with investment data yet.</div>';
+    return `<table>
+      <thead><tr><th>${nameKey}</th><th>Investment</th><th>Returns</th><th>ROI</th></tr></thead>
+      <tbody>${rows.map(r => `
+        <tr>
+          <td>${r.name}</td>
+          <td class="amount">${money(r.investment)}</td>
+          <td class="amount income">${money(r.returns)}</td>
+          <td class="amount ${r.roiPercent >= 0 ? 'income' : 'expense'}">${pct(r.roiPercent)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  async function load() {
+    try {
+      const d = await API.get('/roi');
+      const s = d.summary;
+      document.getElementById('summaryCards').innerHTML = `
+        <div class="stat-card"><span class="label">Total investment</span><div class="value">${money(s.totalInvestment)}</div></div>
+        <div class="stat-card positive"><span class="label">Total returns</span><div class="value">${money(s.totalReturns)}</div></div>
+        <div class="stat-card ${s.overallROI >= 0 ? 'positive' : 'negative'}"><span class="label">Overall ROI</span><div class="value">${pct(s.overallROI)}</div></div>
+        <div class="stat-card"><span class="label">Best performer</span><div class="value" style="font-size:1.1rem;">${s.bestPerformer ? s.bestPerformer.name : '—'}</div></div>
+      `;
+
+      const cropRows = d.crops.filter(c => c.roiPercent !== null && c.roiPercent !== undefined);
+      const livestockRows = d.livestock.filter(l => l.roiPercent !== null && l.roiPercent !== undefined);
+      const all = [...cropRows, ...livestockRows];
+
+      if (all.length) {
+        AFChart.drawBars(document.getElementById('roiChart'), all.map(r => ({ label: r.name, value: r.roiPercent })));
+      }
+
+      document.getElementById('cropRoiTable').innerHTML = roiTable(cropRows, 'Crop');
+      document.getElementById('livestockRoiTable').innerHTML = roiTable(livestockRows, 'Livestock');
+    } catch (err) {
+      document.getElementById('summaryCards').innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

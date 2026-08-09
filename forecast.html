@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Forecast</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Analytics</span>
+        <h1>Financial Forecast</h1>
+      </div>
+      <div class="field" style="margin:0;min-width:160px;">
+        <select id="monthsSelect">
+          <option value="1">1 month ahead</option>
+          <option value="3" selected>3 months ahead</option>
+          <option value="6">6 months ahead</option>
+          <option value="12">12 months ahead</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="alertsWrap"></div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;">Historical &amp; projected net cash flow</h2>
+        <span class="stamp-badge" id="trendBadge">—</span>
+      </div>
+      <p>Projection uses least-squares linear regression over your logged monthly income and expenses.</p>
+      <canvas id="forecastChart" height="280" style="width:100%;height:280px;"></canvas>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:20px;">
+      <div class="card">
+        <h3>Monthly history</h3>
+        <div id="historyTable"><p>Loading…</p></div>
+      </div>
+      <div class="card">
+        <h3>Projected months</h3>
+        <div id="forecastTable"><p>Loading…</p></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/chart.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  function money(n) { return `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+
+  async function load() {
+    const months = document.getElementById('monthsSelect').value;
+    try {
+      const d = await API.get(`/forecast?months=${months}`);
+
+      const trendBadge = document.getElementById('trendBadge');
+      trendBadge.textContent = d.trend.replace('_', ' ');
+      trendBadge.className = 'stamp-badge ' + (d.trend === 'improving' ? 'badge-active' : d.trend === 'declining' ? 'badge-declining' : 'badge-under_treatment');
+
+      const alertsWrap = document.getElementById('alertsWrap');
+      alertsWrap.innerHTML = (d.alerts || []).map(a => `<div class="alert-box">${a}</div>`).join('');
+
+      if (!d.history.length) {
+        document.getElementById('historyTable').innerHTML = '<div class="empty-state">No transaction history yet.</div>';
+        document.getElementById('forecastTable').innerHTML = '<div class="empty-state">Log income/expenses to unlock forecasting.</div>';
+        return;
+      }
+
+      const labels = [...d.history.map(h => h.month), ...d.forecast.map(f => f.month)];
+      const netSeries = [...d.history.map(h => h.net), ...d.forecast.map(f => f.projectedNet)];
+      const incomeSeries = [...d.history.map(h => h.income), ...d.forecast.map(f => f.projectedIncome)];
+      const expenseSeries = [...d.history.map(h => h.expense), ...d.forecast.map(f => f.projectedExpense)];
+
+      AFChart.drawLine(document.getElementById('forecastChart'), [
+        { label: 'Net', points: netSeries, color: '#b9822f' },
+        { label: 'Income', points: incomeSeries, color: '#47552f' },
+        { label: 'Expense', points: expenseSeries, color: '#a4432a' }
+      ], { labels, yFormatter: v => `$${Math.round(v)}` });
+
+      document.getElementById('historyTable').innerHTML = `<table>
+        <thead><tr><th>Month</th><th>Income</th><th>Expense</th><th>Net</th></tr></thead>
+        <tbody>${d.history.map(h => `
+          <tr>
+            <td class="mono">${h.month}</td>
+            <td class="amount income">${money(h.income)}</td>
+            <td class="amount expense">${money(h.expense)}</td>
+            <td class="amount ${h.net >= 0 ? 'income' : 'expense'}">${money(h.net)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+      document.getElementById('forecastTable').innerHTML = `<table>
+        <thead><tr><th>Month</th><th>Proj. Income</th><th>Proj. Expense</th><th>Proj. Net</th></tr></thead>
+        <tbody>${d.forecast.map(f => `
+          <tr>
+            <td class="mono">${f.month}</td>
+            <td class="amount income">${money(f.projectedIncome)}</td>
+            <td class="amount expense">${money(f.projectedExpense)}</td>
+            <td class="amount ${f.projectedNet >= 0 ? 'income' : 'expense'}">${money(f.projectedNet)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    } catch (err) {
+      document.getElementById('historyTable').innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  document.getElementById('monthsSelect').addEventListener('change', load);
+  load();
+</script>
+</body>
+</html>
