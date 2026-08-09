@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Livestock</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow"><span class="live-dot"></span>Live tracking</span>
+        <h1>Livestock</h1>
+      </div>
+      <button class="btn btn-primary btn-sm" id="addBtn">+ Add animal / group</button>
+    </div>
+
+    <div class="grid grid-3" id="grid"><p>Loading…</p></div>
+  </main>
+</div>
+
+<div class="modal-backdrop hidden" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="margin:0;">Add animal / group</h3>
+      <button class="modal-close" id="addClose">&times;</button>
+    </div>
+    <div id="addError" class="error-msg hidden"></div>
+    <form id="addForm">
+      <div class="form-row">
+        <div class="field">
+          <label>Species</label>
+          <select id="fSpecies">
+            <option value="cattle">Cattle</option>
+            <option value="goat">Goat</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tag ID</label>
+          <input type="text" id="fTag" required placeholder="e.g. C-014">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Count</label>
+          <input type="number" id="fCount" value="1" min="1">
+        </div>
+        <div class="field">
+          <label>Acquisition cost ($)</label>
+          <input type="number" step="0.01" id="fCost">
+        </div>
+      </div>
+      <div class="field">
+        <label>Acquired date</label>
+        <input type="date" id="fDate" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save</button>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="detailModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="detailTitle" style="margin:0;"></h3>
+      <button class="modal-close" id="detailClose">&times;</button>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  let data = [];
+  const HEALTH = ['healthy', 'sick', 'under_treatment', 'deceased', 'sold'];
+  function fmtDate(d) { return d ? new Date(d).toLocaleDateString() : '—'; }
+
+  async function load() {
+    const grid = document.getElementById('grid');
+    try {
+      const res = await API.get('/livestock');
+      data = res.livestock;
+      if (!data.length) {
+        grid.innerHTML = '<div class="empty-state">No livestock recorded yet. Add your first animal or group above.</div>';
+        return;
+      }
+      grid.innerHTML = data.map(l => `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <h3 style="margin-bottom:2px;text-transform:capitalize;">${l.species} <span class="mono" style="font-size:0.8rem;color:var(--ink-soft);">${l.tagId}</span></h3>
+              <span class="tag-pill">Count: ${l.count}</span>
+            </div>
+            <span class="stamp-badge badge-${l.healthStatus}">${l.healthStatus.replace('_',' ')}</span>
+          </div>
+          <hr class="divider">
+          <p style="margin-bottom:6px;font-size:0.82rem;">Acquired: <span class="mono">${fmtDate(l.acquiredDate)}</span> &middot; Cost: <span class="mono">$${Number(l.acquisitionCost).toFixed(2)}</span></p>
+          ${l.saleValue ? `<p style="margin-bottom:0;font-size:0.82rem;">Sold: <span class="mono">$${Number(l.saleValue).toFixed(2)}</span> on ${fmtDate(l.saleDate)}</p>` : ''}
+          <button class="btn btn-secondary btn-sm" style="margin-top:14px;width:100%;" data-view="${l._id}">Update / view notes</button>
+        </div>
+      `).join('');
+      grid.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => openDetail(btn.dataset.view)));
+    } catch (err) {
+      grid.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  function openDetail(id) {
+    const l = data.find(x => x._id === id);
+    if (!l) return;
+    document.getElementById('detailTitle').textContent = `${l.species} — ${l.tagId}`;
+    document.getElementById('detailBody').innerHTML = `
+      <div id="detailError" class="error-msg hidden"></div>
+      <div class="field">
+        <label>Health status</label>
+        <select id="healthSelect">${HEALTH.map(h => `<option value="${h}" ${h === l.healthStatus ? 'selected' : ''}>${h.replace('_',' ')}</option>`).join('')}</select>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Sale value ($)</label>
+          <input type="number" step="0.01" id="saleValue" value="${l.saleValue ?? ''}">
+        </div>
+        <div class="field">
+          <label>Sale date</label>
+          <input type="date" id="saleDate" value="${l.saleDate ? l.saleDate.slice(0,10) : ''}">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block btn-sm" id="saveUpdate">Save update</button>
+      <hr class="divider">
+      <div class="field">
+        <label>Add note</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="noteText" placeholder="e.g. Dewormed, vaccinated">
+          <button class="btn btn-secondary btn-sm" id="addNote">Add</button>
+        </div>
+      </div>
+      <ul class="notes-list">
+        ${(l.notes || []).slice().reverse().map(n => `<li><strong class="mono">${new Date(n.date).toLocaleDateString()}</strong> — ${n.text}</li>`).join('') || '<li>No notes yet.</li>'}
+      </ul>
+      <button class="btn btn-danger btn-sm" style="margin-top:14px;" id="deleteBtn">Delete record</button>
+    `;
+    document.getElementById('saveUpdate').addEventListener('click', async () => {
+      try {
+        const saleValue = document.getElementById('saleValue').value;
+        await API.patch('/livestock/' + id, {
+          healthStatus: document.getElementById('healthSelect').value,
+          saleValue: saleValue === '' ? null : Number(saleValue),
+          saleDate: document.getElementById('saleDate').value || null
+        });
+        document.getElementById('detailModal').classList.add('hidden');
+        load();
+      } catch (err) {
+        const e = document.getElementById('detailError');
+        e.textContent = err.message; e.classList.remove('hidden');
+      }
+    });
+    document.getElementById('addNote').addEventListener('click', async () => {
+      const text = document.getElementById('noteText').value.trim();
+      if (!text) return;
+      await API.post(`/livestock/${id}/notes`, { text });
+      const res = await API.get('/livestock');
+      data = res.livestock;
+      openDetail(id);
+    });
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      const ok = await Modal.confirm('Delete this livestock record permanently?', { danger: true });
+      if (!ok) return;
+      await API.del('/livestock/' + id);
+      document.getElementById('detailModal').classList.add('hidden');
+      Toast.success('Livestock record deleted.');
+      load();
+    });
+    document.getElementById('detailModal').classList.remove('hidden');
+  }
+  document.getElementById('detailClose').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
+
+  const addModal = document.getElementById('addModal');
+  document.getElementById('addBtn').addEventListener('click', () => addModal.classList.remove('hidden'));
+  document.getElementById('addClose').addEventListener('click', () => addModal.classList.add('hidden'));
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById('addError');
+    errBox.classList.add('hidden');
+    try {
+      await API.post('/livestock', {
+        species: document.getElementById('fSpecies').value,
+        tagId: document.getElementById('fTag').value,
+        count: document.getElementById('fCount').value,
+        acquisitionCost: document.getElementById('fCost').value,
+        acquiredDate: document.getElementById('fDate').value
+      });
+      addModal.classList.add('hidden');
+      document.getElementById('addForm').reset();
+      Toast.success('Added to live tracking.');
+      load();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove('hidden');
+    }
+  });
+
+  load();
+  setInterval(load, 15000);
+</script>
+</body>
+</html>

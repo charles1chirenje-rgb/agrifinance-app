@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Ledger &amp; Loans</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Records</span>
+        <h1>Ledger &amp; Loans</h1>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-toolbar">
+        <h2 style="margin:0;">Income &amp; Expense Ledger</h2>
+        <button class="btn btn-primary btn-sm" id="addTxBtn">+ Log transaction</button>
+      </div>
+      <div id="txTableWrap"><p>Loading…</p></div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div class="section-toolbar">
+        <h2 style="margin:0;">Loans</h2>
+        <button class="btn btn-primary btn-sm" id="addLoanBtn">+ Record loan</button>
+      </div>
+      <div id="loanTableWrap"><p>Loading…</p></div>
+    </div>
+  </main>
+</div>
+
+<!-- Transaction modal -->
+<div class="modal-backdrop hidden" id="txModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="margin:0;">Log transaction</h3>
+      <button class="modal-close" id="txClose">&times;</button>
+    </div>
+    <div id="txError" class="error-msg hidden"></div>
+    <form id="txForm">
+      <div class="form-row">
+        <div class="field">
+          <label>Type</label>
+          <select id="txType" required>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Currency</label>
+          <select id="txCurrency">
+            <option value="USD">USD</option>
+            <option value="ZiG">ZiG</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <input type="text" id="txCategory" required placeholder="e.g. Cane Sales, Fertilizer, Fuel, Labour">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" step="0.01" id="txAmount" required>
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="txDate" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Enterprise <span class="tag-pill">optional</span></label>
+        <select id="txEnterprise">
+          <option value="general">General</option>
+          <option value="crop">Crop</option>
+          <option value="livestock">Livestock</option>
+        </select>
+      </div>
+      <div class="field hidden" id="txLinkedWrap">
+        <label>Linked record (for ROI tracking)</label>
+        <select id="txLinkedId"></select>
+      </div>
+      <div class="field">
+        <label>Note <span class="tag-pill">optional</span></label>
+        <textarea id="txNote"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save transaction</button>
+    </form>
+  </div>
+</div>
+
+<!-- Loan modal -->
+<div class="modal-backdrop hidden" id="loanModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="margin:0;">Record loan</h3>
+      <button class="modal-close" id="loanClose">&times;</button>
+    </div>
+    <div id="loanError" class="error-msg hidden"></div>
+    <form id="loanForm">
+      <div class="field">
+        <label>Lender</label>
+        <input type="text" id="loanLender" required placeholder="e.g. Agribank, AFC, CBZ Agro-Finance">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Principal amount</label>
+          <input type="number" step="0.01" id="loanPrincipal" required>
+        </div>
+        <div class="field">
+          <label>Interest rate (%)</label>
+          <input type="number" step="0.01" id="loanInterest" value="0">
+        </div>
+      </div>
+      <div class="field">
+        <label>Due date</label>
+        <input type="date" id="loanDue" required>
+      </div>
+      <div class="field">
+        <label>Purpose <span class="tag-pill">optional</span></label>
+        <input type="text" id="loanPurpose" placeholder="e.g. Seasonal inputs">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save loan</button>
+    </form>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  let crops = [], livestock = [];
+
+  function money(n, cur) { return `${cur || 'USD'} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
+  function fmtDate(d) { return d ? new Date(d).toLocaleDateString() : '—'; }
+
+  // ---------- Transactions ----------
+  async function loadTransactions() {
+    const wrap = document.getElementById('txTableWrap');
+    try {
+      const { transactions } = await API.get('/transactions');
+      if (!transactions.length) {
+        wrap.innerHTML = '<div class="empty-state">No transactions logged yet. Add your first income or expense above.</div>';
+        return;
+      }
+      wrap.innerHTML = `<table>
+        <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Enterprise</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
+        <tbody>
+          ${transactions.map(t => `
+            <tr>
+              <td class="mono">${fmtDate(t.date)}</td>
+              <td><span class="stamp-badge badge-${t.type === 'income' ? 'active' : 'overdue'}">${t.type}</span></td>
+              <td>${t.category}${t.note ? `<div style="color:var(--ink-soft);font-size:0.78rem;">${t.note}</div>` : ''}</td>
+              <td><span class="tag-pill">${t.enterprise}</span></td>
+              <td style="text-align:right;" class="amount ${t.type}">${t.type === 'income' ? '+' : '-'}${money(t.amount, t.currency)}</td>
+              <td><button class="btn btn-danger btn-sm" data-del-tx="${t._id}">Delete</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+      wrap.querySelectorAll('[data-del-tx]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ok = await Modal.confirm('Delete this transaction?', { danger: true });
+          if (!ok) return;
+          await API.del('/transactions/' + btn.dataset.delTx);
+          Toast.success('Transaction deleted.');
+          loadTransactions();
+        });
+      });
+    } catch (err) {
+      wrap.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  // ---------- Loans ----------
+  async function loadLoans() {
+    const wrap = document.getElementById('loanTableWrap');
+    try {
+      const { loans } = await API.get('/loans');
+      if (!loans.length) {
+        wrap.innerHTML = '<div class="empty-state">No loans recorded yet.</div>';
+        return;
+      }
+      wrap.innerHTML = `<table>
+        <thead><tr><th>Lender</th><th>Principal</th><th>Repaid</th><th>Due</th><th>Status</th><th>Update</th></tr></thead>
+        <tbody>
+          ${loans.map(l => `
+            <tr>
+              <td>${l.lender}${l.purpose ? `<div style="color:var(--ink-soft);font-size:0.78rem;">${l.purpose}</div>` : ''}</td>
+              <td class="amount">$${Number(l.principal).toFixed(2)}</td>
+              <td class="amount income">$${Number(l.amountRepaid).toFixed(2)}</td>
+              <td class="mono">${fmtDate(l.dueDate)}</td>
+              <td><span class="stamp-badge badge-${l.status}">${l.status}</span></td>
+              <td>
+                ${l.status !== 'repaid' ? `<button class="btn btn-secondary btn-sm" data-repay="${l._id}" data-principal="${l.principal}" data-repaid="${l.amountRepaid}">+ Repayment</button>` : '—'}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+      wrap.querySelectorAll('[data-repay]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const amt = await Modal.prompt('Repayment amount:', { type: 'number', placeholder: '0.00' });
+          if (!amt || isNaN(amt)) return;
+          const newRepaid = Number(btn.dataset.repaid) + Number(amt);
+          await API.patch('/loans/' + btn.dataset.repay, { amountRepaid: newRepaid });
+          Toast.success('Repayment recorded.');
+          loadLoans();
+        });
+      });
+    } catch (err) {
+      wrap.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  // ---------- Transaction modal wiring ----------
+  const txModal = document.getElementById('txModal');
+  document.getElementById('addTxBtn').addEventListener('click', async () => {
+    document.getElementById('txDate').value = new Date().toISOString().slice(0, 10);
+    await populateLinked();
+    txModal.classList.remove('hidden');
+  });
+  document.getElementById('txClose').addEventListener('click', () => txModal.classList.add('hidden'));
+
+  document.getElementById('txEnterprise').addEventListener('change', (e) => {
+    const wrap = document.getElementById('txLinkedWrap');
+    if (e.target.value === 'general') { wrap.classList.add('hidden'); return; }
+    wrap.classList.remove('hidden');
+    const sel = document.getElementById('txLinkedId');
+    const list = e.target.value === 'crop' ? crops : livestock;
+    sel.innerHTML = list.map(item => `<option value="${item._id}">${item.name || (item.species + ' - ' + item.tagId)}</option>`).join('') || '<option value="">None available</option>';
+  });
+
+  async function populateLinked() {
+    try {
+      const [c, l] = await Promise.all([API.get('/crops'), API.get('/livestock')]);
+      crops = c.crops; livestock = l.livestock;
+    } catch (e) { /* ignore */ }
+  }
+
+  document.getElementById('txForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById('txError');
+    errBox.classList.add('hidden');
+    try {
+      const enterprise = document.getElementById('txEnterprise').value;
+      await API.post('/transactions', {
+        type: document.getElementById('txType').value,
+        currency: document.getElementById('txCurrency').value,
+        category: document.getElementById('txCategory').value,
+        amount: document.getElementById('txAmount').value,
+        date: document.getElementById('txDate').value,
+        enterprise,
+        linkedId: enterprise !== 'general' ? (document.getElementById('txLinkedId').value || null) : null,
+        note: document.getElementById('txNote').value
+      });
+      txModal.classList.add('hidden');
+      document.getElementById('txForm').reset();
+      document.getElementById('txLinkedWrap').classList.add('hidden');
+      Toast.success('Transaction logged.');
+      loadTransactions();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove('hidden');
+    }
+  });
+
+  // ---------- Loan modal wiring ----------
+  const loanModal = document.getElementById('loanModal');
+  document.getElementById('addLoanBtn').addEventListener('click', () => loanModal.classList.remove('hidden'));
+  document.getElementById('loanClose').addEventListener('click', () => loanModal.classList.add('hidden'));
+
+  document.getElementById('loanForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById('loanError');
+    errBox.classList.add('hidden');
+    try {
+      await API.post('/loans', {
+        lender: document.getElementById('loanLender').value,
+        principal: document.getElementById('loanPrincipal').value,
+        interestRate: document.getElementById('loanInterest').value,
+        dueDate: document.getElementById('loanDue').value,
+        purpose: document.getElementById('loanPurpose').value
+      });
+      loanModal.classList.add('hidden');
+      document.getElementById('loanForm').reset();
+      Toast.success('Loan recorded.');
+      loadLoans();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove('hidden');
+    }
+  });
+
+  loadTransactions();
+  loadLoans();
+</script>
+</body>
+</html>

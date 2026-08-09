@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Admin</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Administration</span>
+        <h1>Admin Panel</h1>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Farm accounts</h2>
+      <p>Manage roles for everyone recording data on Farm 54. Admins can view whole-farm data on every page via the "show whole-farm data" toggle.</p>
+      <div id="usersTable"><p>Loading…</p></div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  const me = API.currentUser();
+
+  async function load() {
+    const wrap = document.getElementById('usersTable');
+    try {
+      const { users } = await API.get('/users');
+      wrap.innerHTML = `<table>
+        <thead><tr><th>Name</th><th>Email</th><th>Farm</th><th>Role</th><th>Joined</th><th></th></tr></thead>
+        <tbody>${users.map(u => `
+          <tr>
+            <td>${u.name}${u._id === me.id ? ' <span class="tag-pill">you</span>' : ''}</td>
+            <td>${u.email}</td>
+            <td>${u.farmName}</td>
+            <td><span class="stamp-badge badge-${u.role === 'admin' ? 'active' : 'planted'}">${u.role}</span></td>
+            <td class="mono">${new Date(u.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${u._id === me.id ? '—' : `
+                <button class="btn btn-secondary btn-sm" data-toggle-role="${u._id}" data-current="${u.role}">
+                  Make ${u.role === 'admin' ? 'user' : 'admin'}
+                </button>
+                <button class="btn btn-danger btn-sm" data-delete="${u._id}">Remove</button>
+              `}
+            </td>
+          </tr>
+        `).join('')}</tbody>
+      </table>`;
+
+      wrap.querySelectorAll('[data-toggle-role]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const newRole = btn.dataset.current === 'admin' ? 'user' : 'admin';
+          await API.patch(`/users/${btn.dataset.toggleRole}/role`, { role: newRole });
+          load();
+        });
+      });
+      wrap.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ok = await Modal.confirm('Remove this account? This cannot be undone.', { danger: true });
+          if (!ok) return;
+          await API.del(`/users/${btn.dataset.delete}`);
+          Toast.success('Account removed.');
+          load();
+        });
+      });
+    } catch (err) {
+      wrap.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
