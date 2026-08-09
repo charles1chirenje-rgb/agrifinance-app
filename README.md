@@ -41,6 +41,21 @@ frontend and a Node.js/Express REST API on the backend, deployable to Vercel.
   income), plus a farm-wide ROI summary and best/worst performer.
 - **Notifications** — always-on, rule-based alerts (loans due soon, stage
   mismatches, sick livestock) that need no AI configuration at all.
+- **Farm Health Score** — a gamified 0-100 score computed live from your own
+  data (cash flow, loan health, crop-tracking accuracy, livestock health),
+  with level badges from "Needs Attention" to "Flourishing Farm". Shown on
+  the dashboard with a full breakdown of what's driving the number.
+- **Rainfall-aware Planting Advisor** — a Zimbabwe crop calendar
+  cross-referenced against the live weather forecast, telling you what to
+  plant this month vs. what opens up next month, plus a plain-language
+  rain/dry-spell note. Rule-based, so it needs no AI configuration and never
+  costs anything to run.
+- **Community Marketplace** — a shared board (across every farmer using this
+  deployment) to sell, buy, or barter produce, livestock, inputs, equipment
+  and labour. Filter by category or deal type; mark your own listings
+  fulfilled or delete them.
+- **Community Knowledge Feed** — farm-to-farm tips, questions, pest/weather
+  alerts, and success stories, with likes and threaded replies.
 - **Admin panel** — manage user roles, and (as admin) toggle every page to a
   whole-farm view instead of just your own records.
 - **Installable PWA basics** — manifest + icon so the app can be added to a

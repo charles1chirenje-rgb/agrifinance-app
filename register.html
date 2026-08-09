@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Create account</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span class="stamp">AF</span>
+        <h1 style="margin:0;font-size:1.5rem;">AgriFinance</h1>
+      </div>
+      <p class="auth-tagline">Create your farm account</p>
+
+      <div id="errorBox" class="error-msg hidden"></div>
+
+      <form id="registerForm">
+        <div class="field">
+          <label for="name">Full name</label>
+          <input type="text" id="name" required placeholder="Tendai Moyo">
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required placeholder="you@farm54.co.zw">
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="farmName">Farm name</label>
+            <input type="text" id="farmName" value="Farm 54">
+          </div>
+          <div class="field">
+            <label for="currency">Currency</label>
+            <select id="currency">
+              <option value="USD">USD</option>
+              <option value="ZiG">ZiG</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required minlength="6" placeholder="At least 6 characters">
+        </div>
+        <div class="field">
+          <label for="adminInviteCode">Admin invite code <span class="tag-pill">optional</span></label>
+          <input type="text" id="adminInviteCode" placeholder="Leave blank for a standard user account">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Create account</button>
+      </form>
+
+      <p class="auth-switch">Already have an account? <a href="/index.html">Log in</a></p>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    if (API.token()) location.href = '/dashboard.html';
+
+    const form = document.getElementById('registerForm');
+    const errorBox = document.getElementById('errorBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorBox.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account…';
+      try {
+        const payload = {
+          name: document.getElementById('name').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          password: document.getElementById('password').value,
+          farmName: document.getElementById('farmName').value.trim() || 'Farm 54',
+          currency: document.getElementById('currency').value,
+          adminInviteCode: document.getElementById('adminInviteCode').value.trim()
+        };
+        const data = await API.post('/auth/register', payload);
+        API.setSession(data.token, data.user);
+        location.href = '/dashboard.html';
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+      }
+    });
+  </script>
+</body>
+</html>

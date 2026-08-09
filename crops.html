@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Crops</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow"><span class="live-dot"></span>Live tracking</span>
+        <h1>Crops</h1>
+      </div>
+      <button class="btn btn-primary btn-sm" id="addCropBtn">+ Plant new crop</button>
+    </div>
+
+    <div class="card" id="weatherCard" style="margin-bottom:20px;">
+      <h3 style="margin-bottom:10px;">Field conditions right now</h3>
+      <div id="weatherBody"><p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Loading live weather…</p></div>
+    </div>
+
+    <div class="grid grid-3" id="cropGrid">
+      <p>Loading…</p>
+    </div>
+  </main>
+</div>
+
+<!-- Add crop modal -->
+<div class="modal-backdrop hidden" id="cropModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="margin:0;">Plant new crop</h3>
+      <button class="modal-close" id="cropClose">&times;</button>
+    </div>
+    <div id="cropError" class="error-msg hidden"></div>
+    <form id="cropForm">
+      <div class="field">
+        <label>Crop name</label>
+        <input type="text" id="cName" required placeholder="e.g. Sugar Cane">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Plot name</label>
+          <input type="text" id="cPlot" placeholder="e.g. North Field">
+        </div>
+        <div class="field">
+          <label>Area (hectares)</label>
+          <input type="number" step="0.1" id="cArea">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Planted date</label>
+          <input type="date" id="cPlanted" required>
+        </div>
+        <div class="field">
+          <label>Expected harvest date</label>
+          <input type="date" id="cHarvest">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Expected yield (t)</label>
+          <input type="number" step="0.1" id="cYield">
+        </div>
+        <div class="field">
+          <label>Investment ($)</label>
+          <input type="number" step="0.01" id="cInvestment">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save crop</button>
+    </form>
+  </div>
+</div>
+
+<!-- Detail / update modal -->
+<div class="modal-backdrop hidden" id="detailModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="detailTitle" style="margin:0;"></h3>
+      <button class="modal-close" id="detailClose">&times;</button>
+    </div>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  const STAGES = ['planted', 'germination', 'vegetative', 'flowering', 'maturing', 'harvested'];
+  let cropsData = [];
+
+  function fmtDate(d) { return d ? new Date(d).toLocaleDateString() : '—'; }
+
+  async function loadCrops() {
+    const grid = document.getElementById('cropGrid');
+    try {
+      const { crops } = await API.get('/crops');
+      cropsData = crops;
+      if (!crops.length) {
+        grid.innerHTML = '<div class="empty-state">No crops tracked yet. Plant your first crop to start live tracking.</div>';
+        return;
+      }
+      grid.innerHTML = crops.map(c => {
+        const live = c.live || {};
+        return `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <h3 style="margin-bottom:2px;">${c.name}</h3>
+              <span class="tag-pill">${c.plotName || 'Unassigned plot'} &middot; ${c.areaHectares || 0} ha</span>
+            </div>
+            <span class="stamp-badge badge-${c.stage}">${c.stage.replace('_',' ')}</span>
+          </div>
+
+          ${c.status === 'active' ? `
+          <div class="progress-track"><div class="progress-fill" style="width:${live.progressPercent || 0}%;"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--ink-soft);">
+            <span><span class="live-dot"></span>Day ${live.daysSincePlanted ?? '—'}</span>
+            <span>${live.daysToHarvest !== null && live.daysToHarvest !== undefined ? `~${live.daysToHarvest}d to harvest` : ''}</span>
+          </div>
+          ${live.stageMismatch ? `
+          <div class="mismatch-flag">
+            <span>&#9888; system detects <strong>${live.autoStage.replace('_',' ')}</strong> — record still shows ${c.stage}</span>
+          </div>` : ''}
+          ` : ''}
+
+          <hr class="divider">
+          <p style="margin-bottom:6px;font-size:0.82rem;">Planted: <span class="mono">${fmtDate(c.plantedDate)}</span></p>
+          <p style="margin-bottom:6px;font-size:0.82rem;">Expected harvest: <span class="mono">${fmtDate(c.expectedHarvestDate)}</span></p>
+          <p style="margin-bottom:0;font-size:0.82rem;">Expected yield: <span class="mono">${c.expectedYieldTonnes || 0} t</span>${c.actualYieldTonnes !== null ? ` &middot; Actual: <span class="mono">${c.actualYieldTonnes} t</span>` : ''}</p>
+          <div style="display:flex;gap:8px;margin-top:14px;">
+            ${live.stageMismatch ? `<button class="btn btn-secondary btn-sm" style="flex:1;" data-sync="${c._id}">Sync stage</button>` : ''}
+            <button class="btn btn-secondary btn-sm" style="flex:1;" data-view="${c._id}">Update / notes</button>
+          </div>
+        </div>
+      `;
+      }).join('');
+      grid.querySelectorAll('[data-view]').forEach(btn => {
+        btn.addEventListener('click', () => openDetail(btn.dataset.view));
+      });
+      grid.querySelectorAll('[data-sync]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await API.post(`/crops/${btn.dataset.sync}/sync-stage`);
+          Toast.success('Stage synced to the live-detected growth phase.');
+          loadCrops();
+        });
+      });
+    } catch (err) {
+      grid.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  function openDetail(id) {
+    const c = cropsData.find(x => x._id === id);
+    if (!c) return;
+    document.getElementById('detailTitle').textContent = c.name + ' — ' + (c.plotName || 'plot');
+    const stageOptions = STAGES.map(s => `<option value="${s}" ${s === c.stage ? 'selected' : ''}>${s}</option>`).join('');
+    const live = c.live || {};
+    document.getElementById('detailBody').innerHTML = `
+      <div id="detailError" class="error-msg hidden"></div>
+      ${c.status === 'active' ? `
+      <div class="insight-card ${live.stageMismatch ? 'insight-warning' : 'insight-positive'}" style="margin-bottom:16px;">
+        <div>
+          <strong>Live tracking:</strong> day ${live.daysSincePlanted} since planting, system-detected stage is
+          <strong>${live.autoStage.replace('_',' ')}</strong>${live.daysToHarvest ? `, about ${live.daysToHarvest} day(s) to expected harvest` : ''}.
+          ${live.stageMismatch ? ' The recorded stage below is behind — use "Sync now" or update it manually.' : ' Recorded stage matches the model.'}
+        </div>
+      </div>` : ''}
+      <div class="field">
+        <label>Growth stage</label>
+        <div style="display:flex;gap:8px;">
+          <select id="stageSelect" style="flex:1;">${stageOptions}</select>
+          ${live.stageMismatch ? `<button type="button" class="btn btn-secondary btn-sm" id="syncNowBtn">Sync now</button>` : ''}
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Actual yield (t)</label>
+          <input type="number" step="0.1" id="actualYield" value="${c.actualYieldTonnes ?? ''}">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="cropStatus">
+            <option value="active" ${c.status === 'active' ? 'selected' : ''}>Active</option>
+            <option value="harvested" ${c.status === 'harvested' ? 'selected' : ''}>Harvested</option>
+            <option value="lost" ${c.status === 'lost' ? 'selected' : ''}>Lost</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block btn-sm" id="saveUpdate">Save update</button>
+      <hr class="divider">
+      <div class="field">
+        <label>Add field note</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="noteText" placeholder="e.g. Irrigation cycle completed">
+          <button class="btn btn-secondary btn-sm" id="addNote">Add</button>
+        </div>
+      </div>
+      <ul class="notes-list">
+        ${(c.notes || []).slice().reverse().map(n => `<li><strong class="mono">${new Date(n.date).toLocaleDateString()}</strong> — ${n.text}</li>`).join('') || '<li>No field notes yet.</li>'}
+      </ul>
+      <button class="btn btn-danger btn-sm" style="margin-top:14px;" id="deleteCrop">Delete crop record</button>
+    `;
+    document.getElementById('saveUpdate').addEventListener('click', async () => {
+      try {
+        const stage = document.getElementById('stageSelect').value;
+        const status = document.getElementById('cropStatus').value;
+        const actualYieldTonnes = document.getElementById('actualYield').value;
+        await API.patch('/crops/' + id, {
+          stage, status,
+          actualYieldTonnes: actualYieldTonnes === '' ? null : Number(actualYieldTonnes)
+        });
+        document.getElementById('detailModal').classList.add('hidden');
+        Toast.success('Crop record updated.');
+        loadCrops();
+      } catch (err) {
+        const e = document.getElementById('detailError');
+        e.textContent = err.message; e.classList.remove('hidden');
+      }
+    });
+    const syncBtn = document.getElementById('syncNowBtn');
+    if (syncBtn) syncBtn.addEventListener('click', async () => {
+      document.getElementById('stageSelect').value = live.autoStage;
+    });
+    document.getElementById('addNote').addEventListener('click', async () => {
+      const text = document.getElementById('noteText').value.trim();
+      if (!text) return;
+      await API.post(`/crops/${id}/notes`, { text });
+      const updatedList = await API.get('/crops');
+      cropsData = updatedList.crops;
+      openDetail(id);
+    });
+    document.getElementById('deleteCrop').addEventListener('click', async () => {
+      const ok = await Modal.confirm('Delete this crop record permanently?', { danger: true });
+      if (!ok) return;
+      await API.del('/crops/' + id);
+      document.getElementById('detailModal').classList.add('hidden');
+      Toast.success('Crop record deleted.');
+      loadCrops();
+    });
+    document.getElementById('detailModal').classList.remove('hidden');
+  }
+  document.getElementById('detailClose').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
+
+  const cropModal = document.getElementById('cropModal');
+  document.getElementById('addCropBtn').addEventListener('click', () => cropModal.classList.remove('hidden'));
+  document.getElementById('cropClose').addEventListener('click', () => cropModal.classList.add('hidden'));
+
+  document.getElementById('cropForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById('cropError');
+    errBox.classList.add('hidden');
+    try {
+      await API.post('/crops', {
+        name: document.getElementById('cName').value,
+        plotName: document.getElementById('cPlot').value,
+        areaHectares: document.getElementById('cArea').value,
+        plantedDate: document.getElementById('cPlanted').value,
+        expectedHarvestDate: document.getElementById('cHarvest').value,
+        expectedYieldTonnes: document.getElementById('cYield').value,
+        investment: document.getElementById('cInvestment').value
+      });
+      cropModal.classList.add('hidden');
+      document.getElementById('cropForm').reset();
+      Toast.success('Crop planted and now being live-tracked.');
+      loadCrops();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.classList.remove('hidden');
+    }
+  });
+
+  const WEATHER_CODES = {
+    0: 'Clear sky', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+    45: 'Fog', 48: 'Fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 80: 'Rain showers',
+    95: 'Thunderstorm'
+  };
+  function weatherLabel(code) { return WEATHER_CODES[code] || 'Variable conditions'; }
+
+  async function loadWeather() {
+    const body = document.getElementById('weatherBody');
+    try {
+      const w = await API.get('/weather');
+      const c = w.current;
+      const dayLabels = ['Today', 'Tomorrow', 'Day 3', 'Day 4'];
+      body.innerHTML = `
+        <div class="weather-widget">
+          <div>
+            <div class="weather-temp">${Math.round(c.temperature_2m)}&deg;C</div>
+            <div style="font-size:0.8rem;color:var(--ink-soft);">${weatherLabel(c.weather_code)} &middot; ${w.location.name}</div>
+            <div style="font-size:0.78rem;color:var(--ink-soft);margin-top:4px;">Humidity ${c.relative_humidity_2m}% &middot; Rain now ${c.precipitation}mm &middot; Wind ${Math.round(c.wind_speed_10m)}km/h</div>
+          </div>
+          <div class="weather-days">
+            ${w.daily.time.slice(0, 4).map((d, i) => `
+              <div class="weather-day">
+                <div>${dayLabels[i] || d}</div>
+                <div class="d-temp">${Math.round(w.daily.temperature_2m_max[i])}&deg;/${Math.round(w.daily.temperature_2m_min[i])}&deg;</div>
+                <div>${w.daily.precipitation_sum[i]}mm</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Live weather is temporarily unavailable.</p>`;
+    }
+  }
+
+  loadCrops();
+  loadWeather();
+  setInterval(loadCrops, 15000); // live refresh
+  setInterval(loadWeather, 10 * 60000);
+</script>
+</body>
+</html>
