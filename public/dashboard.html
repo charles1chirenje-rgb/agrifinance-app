@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Dashboard</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Overview</span>
+        <h1 id="pageTitle">Dashboard</h1>
+      </div>
+      <div id="scopeToggleWrap"></div>
+    </div>
+
+    <div class="grid grid-4" id="statCards">
+      <div class="stat-card"><span class="label">Loading…</span></div>
+    </div>
+
+    <div class="card" id="insightsCard" style="margin-top:22px;">
+      <h2 style="margin-bottom:12px;">Today's alerts &amp; insights</h2>
+      <div id="insightsBody"><p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Checking your farm…</p></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:22px;align-items:start;">
+      <div class="card">
+        <h2>Cash position</h2>
+        <p>Total income vs. expense recorded to date.</p>
+        <canvas id="miniChart" height="200" style="width:100%;height:200px;"></canvas>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <h2><span class="live-dot"></span>Live activity</h2>
+          <span class="tag-pill">updates every 8s</span>
+        </div>
+        <ul class="feed" id="activityFeed">
+          <li>Loading activity…</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/chart.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  const user = API.currentUser();
+  let showAll = false;
+
+  if (user.role === 'admin') {
+    const wrap = document.getElementById('scopeToggleWrap');
+    wrap.innerHTML = `<label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--ink-soft);">
+      <input type="checkbox" id="scopeToggle" style="width:auto;"> Show whole-farm data (all users)
+    </label>`;
+    document.getElementById('scopeToggle').addEventListener('change', (e) => {
+      showAll = e.target.checked;
+      loadDashboard();
+      loadFeed();
+      loadInsights();
+    });
+  }
+
+  function money(n) {
+    return `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function q() { return showAll ? '?all=true' : ''; }
+
+  async function loadDashboard() {
+    try {
+      const d = await API.get('/dashboard' + q());
+      const cards = document.getElementById('statCards');
+      cards.innerHTML = `
+        <div class="stat-card ${d.balance >= 0 ? 'positive' : 'negative'}">
+          <span class="label">Net balance</span>
+          <div class="value">${money(d.balance)}</div>
+        </div>
+        <div class="stat-card positive">
+          <span class="label">Total income</span>
+          <div class="value">${money(d.totalIncome)}</div>
+        </div>
+        <div class="stat-card negative">
+          <span class="label">Total expense</span>
+          <div class="value">${money(d.totalExpense)}</div>
+        </div>
+        <div class="stat-card">
+          <span class="label">Outstanding loans</span>
+          <div class="value gold">${money(d.outstandingLoans)}</div>
+        </div>
+        <div class="stat-card">
+          <span class="label">Active crops</span>
+          <div class="value">${d.activeCrops} <span style="font-size:0.9rem;color:var(--ink-soft);">/ ${d.totalCrops}</span></div>
+        </div>
+        <div class="stat-card">
+          <span class="label">Livestock on farm</span>
+          <div class="value">${d.livestockCount}</div>
+        </div>
+        ${d.totalUsers !== undefined ? `
+        <div class="stat-card">
+          <span class="label">Registered users</span>
+          <div class="value">${d.totalUsers}</div>
+        </div>` : ''}
+      `;
+
+      AFChart.drawBars(document.getElementById('miniChart'), [
+        { label: 'Income', value: d.totalIncome, color: '#47552f' },
+        { label: 'Expense', value: -d.totalExpense, color: '#a4432a' },
+        { label: 'Net', value: d.balance, color: '#b9822f' }
+      ].map(x => ({ ...x, value: x.value })));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function timeAgo(iso) {
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  }
+
+  async function loadFeed() {
+    try {
+      const d = await API.get('/events' + q());
+      const feed = document.getElementById('activityFeed');
+      if (!d.events.length) {
+        feed.innerHTML = '<li>No activity recorded yet. Start by logging a transaction or adding a crop.</li>';
+        return;
+      }
+      feed.innerHTML = d.events.map(e => `
+        <li>
+          <span class="dot"></span>
+          <div>
+            <div>${e.message}</div>
+            <div class="time">${timeAgo(e.createdAt)}</div>
+          </div>
+        </li>
+      `).join('');
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function loadInsights() {
+    const body = document.getElementById('insightsBody');
+    try {
+      const [ruleBased, ai] = await Promise.all([
+        API.get('/notifications' + q()),
+        API.get('/assistant/insights' + q()).catch(() => ({ insights: [] }))
+      ]);
+      const combined = [
+        ...ruleBased.notifications.map(n => ({ tone: n.tone, text: n.text })),
+        ...(ai.insights || [])
+      ];
+      if (!combined.length) {
+        body.innerHTML = '<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Nothing urgent right now — everything is tracking as expected.</p>';
+        return;
+      }
+      body.innerHTML = combined.map(n => `<div class="insight-card insight-${n.tone || 'info'}">${n.text}</div>`).join('');
+    } catch (err) {
+      body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Could not load insights right now.</p>`;
+    }
+  }
+
+  loadDashboard();
+  loadFeed();
+  loadInsights();
+  setInterval(() => { loadDashboard(); loadFeed(); loadInsights(); }, 8000);
+</script>
+</body>
+</html>

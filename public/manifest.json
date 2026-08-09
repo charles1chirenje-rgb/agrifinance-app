@@ -1,0 +1,12 @@
+{
+  "name": "AgriFinance - Farm 54",
+  "short_name": "AgriFinance",
+  "description": "Financial and farm management for Zimbabwean farmers",
+  "start_url": "/dashboard.html",
+  "display": "standalone",
+  "background_color": "#f2ede0",
+  "theme_color": "#333f20",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
