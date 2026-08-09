@@ -1,0 +1,26 @@
+{
+  "name": "agrifinance",
+  "version": "1.0.0",
+  "description": "AgriFinance - Financial & Farm Management PWA for Zimbabwean farmers (Farm 54 case study)",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "seed": "node server/utils/seed.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "lowdb": "^1.0.0",
+    "mongoose": "^8.5.0",
+    "uuid": "^9.0.1",
+    "@anthropic-ai/sdk": "^0.27.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
