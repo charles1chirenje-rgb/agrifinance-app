@@ -51,6 +51,7 @@
         <div class="hero-stat"><div class="value">Zero setup</div><div class="label">Works offline-friendly, no config</div></div>
         <div class="hero-stat"><div class="value">Live</div><div class="label">8s activity refresh</div></div>
       </div>
+      <div class="hero-scene" id="heroScene"></div>
     </section>
 
     <section class="auth-panel">
@@ -81,7 +82,9 @@
   </div>
 
   <script src="/js/api.js"></script>
+  <script src="/js/scenes.js"></script>
   <script>
+    document.getElementById('heroScene').innerHTML = Scenes.growingPlant();
     if (API.token()) location.href = '/dashboard.html';
 
     const form = document.getElementById('loginForm');

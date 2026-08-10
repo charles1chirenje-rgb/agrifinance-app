@@ -17,6 +17,7 @@
       <div>
         <span class="eyebrow">Farmer to farmer</span>
         <h1>Marketplace</h1>
+        <span class="live-tag"><span class="live-dot"></span> Live board — shared with every farmer here</span>
       </div>
       <button class="btn btn-primary btn-sm" id="addBtn">+ List something</button>
     </div>
@@ -119,6 +120,7 @@
 <script src="/js/toast.js"></script>
 <script src="/js/modal.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/scenes.js"></script>
 <script src="/js/assistant.js"></script>
 <script>
   const user = API.currentUser();
@@ -144,9 +146,15 @@
     try {
       const d = await API.get('/marketplace' + query());
       if (!d.listings.length) {
-        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">Nothing listed yet — be the first to post.</div>`;
+        grid.innerHTML = `
+          <div class="empty-scene" style="grid-column:1/-1;">
+            ${Scenes.marketplace()}
+            <p>Nothing listed yet — be the first to post.</p>
+          </div>
+        `;
         return;
       }
+      grid.className = 'listing-grid stagger-in';
       grid.innerHTML = d.listings.map(l => `
         <div class="listing-card fade-in">
           <div class="listing-top">

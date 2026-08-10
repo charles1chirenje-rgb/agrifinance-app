@@ -33,11 +33,17 @@
     <div class="grid grid-2" style="margin-top:22px;align-items:start;">
       <div class="card">
         <h2>Farm Health Score</h2>
-        <div id="scoreBody"><p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Calculating…</p></div>
+        <div id="scoreBody">
+          <div class="skeleton skeleton-block" style="margin-bottom:8px;"></div>
+          <div class="skeleton skeleton-line" style="width:70%;"></div>
+        </div>
       </div>
       <div class="card">
         <h2>Planting advisor</h2>
-        <div id="advisorBody"><p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Checking the calendar and weather…</p></div>
+        <div id="advisorBody">
+          <div class="skeleton skeleton-line" style="width:90%;"></div>
+          <div class="skeleton skeleton-line" style="width:60%;"></div>
+        </div>
       </div>
     </div>
 
@@ -196,7 +202,7 @@
         return;
       }
       body.innerHTML = `
-        <div class="score-widget">
+        <div class="score-widget fade-in">
           <div class="score-ring" style="--pct:${d.score};">
             <div class="score-ring-inner">
               <span class="num">${d.score}</span>

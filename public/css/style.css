@@ -810,3 +810,127 @@ canvas { max-width: 100%; }
 /* micro-interaction on stat cards */
 .stat-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .stat-card:hover { transform: translateY(-2px); }
+
+/* ==========================================================================
+   Motion system — small, purposeful animations (no external GIFs/video,
+   everything is CSS/SVG so it stays instant and works offline)
+   ========================================================================== */
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(71, 85, 47, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(71, 85, 47, 0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+@keyframes growStem {
+  from { stroke-dashoffset: 60; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes leafPop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes sunDrift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(3px, -3px) rotate(8deg); }
+}
+@keyframes cloudDrift {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(8px); }
+  100% { transform: translateX(0); }
+}
+@keyframes cardStagger {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ringSweep {
+  from { --pct: 0; }
+}
+
+/* stagger children entrance — apply to any grid/list wrapper */
+.stagger-in > * {
+  opacity: 0;
+  animation: cardStagger 0.45s ease forwards;
+}
+.stagger-in > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger-in > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger-in > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger-in > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger-in > *:nth-child(5) { animation-delay: 0.26s; }
+.stagger-in > *:nth-child(6) { animation-delay: 0.32s; }
+.stagger-in > *:nth-child(n+7) { animation-delay: 0.36s; }
+
+/* live pulse dot — for anything reflecting real-time / polling data */
+.live-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--olive);
+  animation: pulseGlow 1.8s ease-in-out infinite;
+}
+.live-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 0.65rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--olive-deep);
+}
+
+/* skeleton shimmer loader, drop in while a widget fetches */
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--parchment-deep) 25%, #f5f0e2 37%, var(--parchment-deep) 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+.skeleton-line { height: 12px; margin-bottom: 8px; }
+.skeleton-block { height: 84px; }
+
+/* growing score ring sweep on first paint */
+.score-ring { animation: ringSweep 0.8s ease-out; }
+
+/* gentle float utility for decorative icon badges */
+.float-icon { animation: floatY 3.6s ease-in-out infinite; }
+
+/* ==========================================================================
+   Animated illustrations (inline SVG "scenes", looping, no external assets)
+   ========================================================================== */
+.scene {
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto;
+}
+.scene .sun { transform-origin: center; animation: sunDrift 4s ease-in-out infinite; }
+.scene .cloud { animation: cloudDrift 6s ease-in-out infinite; }
+.scene .stem {
+  stroke-dasharray: 60;
+  animation: growStem 1.6s ease-out forwards;
+}
+.scene .leaf {
+  transform-origin: center;
+  animation: leafPop 0.5s ease-out forwards;
+}
+.scene .leaf-1 { animation-delay: 0.8s; }
+.scene .leaf-2 { animation-delay: 1.05s; }
+.scene .leaf-3 { animation-delay: 1.3s; }
+
+.hero-scene {
+  position: absolute;
+  right: 28px;
+  bottom: 20px;
+  width: 150px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.empty-scene {
+  text-align: center;
+  padding: 36px 20px;
+}
+.empty-scene .scene { margin-bottom: 14px; }
+.empty-scene p { margin: 0; }
