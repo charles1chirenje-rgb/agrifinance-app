@@ -71,6 +71,7 @@
 <script src="/js/modal.js"></script>
 <script src="/js/nav.js"></script>
 <script src="/js/scenes.js"></script>
+<script src="/js/voice-input.js"></script>
 <script src="/js/assistant.js"></script>
 <script>
   const user = API.currentUser();
@@ -160,6 +161,7 @@
   const addModal = document.getElementById('addModal');
   document.getElementById('addBtn').addEventListener('click', () => addModal.classList.remove('hidden'));
   document.getElementById('addClose').addEventListener('click', () => addModal.classList.add('hidden'));
+  VoiceInput.attach(document.getElementById('fBody'));
 
   document.getElementById('addForm').addEventListener('submit', async (e) => {
     e.preventDefault();

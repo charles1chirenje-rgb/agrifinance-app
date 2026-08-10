@@ -80,6 +80,7 @@
 <script src="/js/toast.js"></script>
 <script src="/js/modal.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/voice-input.js"></script>
 <script src="/js/assistant.js"></script>
 <script>
   let data = [];
@@ -150,6 +151,7 @@
       </ul>
       <button class="btn btn-danger btn-sm" style="margin-top:14px;" id="deleteBtn">Delete record</button>
     `;
+    VoiceInput.attach(document.getElementById('noteText'));
     document.getElementById('saveUpdate').addEventListener('click', async () => {
       try {
         const saleValue = document.getElementById('saleValue').value;
