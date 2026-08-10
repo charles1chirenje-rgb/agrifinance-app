@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriFinance &middot; Risk Log</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#333f20">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">External factors</span>
+        <h1>Risk Log</h1>
+      </div>
+      <button class="btn btn-primary btn-sm" id="addBtn">+ Log an event</button>
+    </div>
+    <p style="color:var(--ink-soft);font-size:0.85rem;margin:-8px 0 18px;max-width:60ch;">
+      Weather damage, pest or disease outbreaks, market price shocks, theft, equipment
+      failures, or regulatory changes — anything outside the farm's control that could
+      affect it. Unresolved high-severity events also count against your Farm Health Score.
+    </p>
+
+    <div class="grid grid-4" id="summaryCards" style="margin-bottom:22px;"></div>
+
+    <div class="section-toolbar">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="filterCategory" style="width:auto;">
+          <option value="">All categories</option>
+          <option value="weather">Weather</option>
+          <option value="pest_disease">Pest / disease</option>
+          <option value="market">Market</option>
+          <option value="security">Security</option>
+          <option value="infrastructure">Infrastructure</option>
+          <option value="regulatory">Regulatory</option>
+          <option value="other">Other</option>
+        </select>
+        <select id="filterStatus" style="width:auto;">
+          <option value="">All statuses</option>
+          <option value="ongoing">Ongoing</option>
+          <option value="monitoring">Monitoring</option>
+          <option value="resolved">Resolved</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="list"><p>Loading…</p></div>
+  </main>
+</div>
+
+<div class="modal-backdrop hidden" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="margin:0;">Log an external event</h3>
+      <button class="modal-close" id="addClose">&times;</button>
+    </div>
+    <div id="addError" class="error-msg hidden"></div>
+    <form id="addForm">
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="fTitle" required placeholder="e.g. Hailstorm damaged North Field maize">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Category</label>
+          <select id="fCategory">
+            <option value="weather">Weather</option>
+            <option value="pest_disease">Pest / disease</option>
+            <option value="market">Market</option>
+            <option value="security">Security</option>
+            <option value="infrastructure">Infrastructure</option>
+            <option value="regulatory">Regulatory</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Severity</label>
+          <select id="fSeverity">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Date occurred</label>
+          <input type="date" id="fDate" required>
+        </div>
+        <div class="field">
+          <label>Estimated impact ($, optional)</label>
+          <input type="number" id="fImpact" step="0.01" placeholder="0">
+        </div>
+      </div>
+      <div class="field">
+        <label>Affected area (optional)</label>
+        <input type="text" id="fArea" placeholder="e.g. North Field, cattle kraal">
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <div style="display:flex;gap:8px;">
+          <textarea id="fDescription" placeholder="What happened, and any immediate action taken"></textarea>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Log event</button>
+    </form>
+  </div>
+</div>
+
+<script src="/js/offline-db.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/voice-input.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  let currentFactors = [];
+
+  const CATEGORY_LABEL = {
+    weather: 'Weather', pest_disease: 'Pest / disease', market: 'Market',
+    security: 'Security', infrastructure: 'Infrastructure', regulatory: 'Regulatory', other: 'Other'
+  };
+
+  function query() {
+    const params = new URLSearchParams();
+    const category = document.getElementById('filterCategory').value;
+    const status = document.getElementById('filterStatus').value;
+    if (category) params.set('category', category);
+    if (status) params.set('status', status);
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  }
+
+  function renderSummary() {
+    const open = currentFactors.filter(f => f.status !== 'resolved');
+    const high = open.filter(f => f.severity === 'high').length;
+    const totalImpact = currentFactors.reduce((s, f) => s + (Number(f.estimatedImpact) || 0), 0);
+    const cards = [
+      { label: 'Open events', value: open.length, cls: open.length > 0 ? 'negative' : 'positive' },
+      { label: 'High severity, unresolved', value: high, cls: high > 0 ? 'negative' : 'positive' },
+      { label: 'Resolved', value: currentFactors.filter(f => f.status === 'resolved').length, cls: 'positive' },
+      { label: 'Estimated impact logged', value: `$${totalImpact.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, cls: '' }
+    ];
+    document.getElementById('summaryCards').innerHTML = cards.map(c => `
+      <div class="stat-card ${c.cls}">
+        <div class="label">${c.label}</div>
+        <div class="value">${c.value}</div>
+      </div>
+    `).join('');
+  }
+
+  async function load() {
+    const list = document.getElementById('list');
+    try {
+      const d = await API.get('/external-factors' + query());
+      currentFactors = d.factors;
+      renderSummary();
+
+      if (!currentFactors.length) {
+        list.innerHTML = `<div class="empty-state">Nothing logged yet — record the first external event affecting the farm.</div>`;
+        return;
+      }
+
+      list.className = 'stagger-in';
+      list.innerHTML = currentFactors.map(f => `
+        <div class="post-card">
+          <div class="post-head">
+            <div>
+              <span class="deal-badge deal-${f.severity === 'high' ? 'barter' : f.severity === 'medium' ? 'buy' : 'sell'}">${f.severity}</span>
+              <span class="tag-pill">${CATEGORY_LABEL[f.category] || f.category}</span>
+            </div>
+            <span class="stamp-badge ${f.status === 'resolved' ? 'badge-repaid' : 'badge-active'}">${f.status}</span>
+          </div>
+          <h3 style="margin:8px 0 4px;font-size:1rem;">${f.title}</h3>
+          <div class="post-author">${new Date(f.dateOccurred).toLocaleDateString()}${f.affectedArea ? ' &middot; ' + f.affectedArea : ''}${f.estimatedImpact ? ' &middot; est. impact $' + Number(f.estimatedImpact).toLocaleString() : ''}</div>
+          ${f.description ? `<div class="post-body">${f.description}</div>` : ''}
+          ${f.resolutionNotes ? `<div class="post-body" style="color:var(--olive-deep);"><strong>Resolution:</strong> ${f.resolutionNotes}</div>` : ''}
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            ${f.status !== 'resolved' ? `
+              <button class="btn btn-secondary btn-sm" data-monitor="${f._id}" ${f.status === 'monitoring' ? 'disabled' : ''}>Mark monitoring</button>
+              <button class="btn btn-secondary btn-sm" data-resolve="${f._id}">Mark resolved</button>
+            ` : ''}
+            <button class="btn btn-danger btn-sm" data-del="${f._id}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('[data-monitor]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try { await API.patch(`/external-factors/${btn.dataset.monitor}`, { status: 'monitoring' }); load(); }
+          catch (err) { Toast.error(err.message); }
+        });
+      });
+      list.querySelectorAll('[data-resolve]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const notes = await Modal.prompt('Any resolution notes? (optional)', { placeholder: 'e.g. Sprayed and recovered, claim filed with insurer' });
+          if (notes === null) return;
+          try {
+            await API.patch(`/external-factors/${btn.dataset.resolve}`, { status: 'resolved', resolutionNotes: notes || '' });
+            Toast.success('Marked resolved');
+            load();
+          } catch (err) { Toast.error(err.message); }
+        });
+      });
+      list.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ok = await Modal.confirm('Delete this record?', { danger: true });
+          if (!ok) return;
+          try { await API.del(`/external-factors/${btn.dataset.del}`); Toast.success('Deleted'); load(); }
+          catch (err) { Toast.error(err.message); }
+        });
+      });
+    } catch (err) {
+      list.innerHTML = `<div class="empty-state">Could not load the risk log right now.</div>`;
+    }
+  }
+
+  document.getElementById('filterCategory').addEventListener('change', load);
+  document.getElementById('filterStatus').addEventListener('change', load);
+
+  const addModal = document.getElementById('addModal');
+  document.getElementById('addBtn').addEventListener('click', () => {
+    document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+    addModal.classList.remove('hidden');
+  });
+  document.getElementById('addClose').addEventListener('click', () => addModal.classList.add('hidden'));
+  VoiceInput.attach(document.getElementById('fDescription'));
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('addError');
+    errorBox.classList.add('hidden');
+    try {
+      await API.post('/external-factors', {
+        title: document.getElementById('fTitle').value.trim(),
+        category: document.getElementById('fCategory').value,
+        severity: document.getElementById('fSeverity').value,
+        dateOccurred: document.getElementById('fDate').value,
+        estimatedImpact: document.getElementById('fImpact').value,
+        affectedArea: document.getElementById('fArea').value,
+        description: document.getElementById('fDescription').value
+      });
+      addModal.classList.add('hidden');
+      document.getElementById('addForm').reset();
+      Toast.success('Event logged');
+      load();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.remove('hidden');
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

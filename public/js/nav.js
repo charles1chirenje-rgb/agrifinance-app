@@ -18,6 +18,7 @@
     { href: '/livestock.html', label: 'Livestock' },
     { href: '/forecast.html', label: 'Forecast' },
     { href: '/roi.html', label: 'ROI' },
+    { href: '/risk-log.html', label: 'Risk Log' },
     { href: '/marketplace.html', label: 'Marketplace' },
     { href: '/community.html', label: 'Community' }
   ];
