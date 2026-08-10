@@ -1,11 +1,15 @@
 /* Runs on every protected page: bounces to login if no token, then paints
-   the top navigation bar (with role-aware links) into #topbar. */
+   the top navigation bar (with role-aware links) into #topbar, and wires up
+   the offline-first layer (service worker + sync banner) shared by every
+   authenticated page. */
 (function () {
   const user = API.currentUser();
   if (!API.token() || !user) {
     location.href = '/index.html';
     return;
   }
+
+  API.initOffline();
 
   const links = [
     { href: '/dashboard.html', label: 'Dashboard' },
@@ -42,4 +46,30 @@
     API.clearSession();
     location.href = '/index.html';
   });
+
+  // --- Offline / sync status banner -------------------------------------
+  const banner = document.createElement('div');
+  banner.id = 'offlineBanner';
+  banner.className = 'offline-banner hidden';
+  document.body.prepend(banner);
+
+  async function refreshBanner() {
+    const pending = window.OfflineDB ? await OfflineDB.queueCount().catch(() => 0) : 0;
+    if (!navigator.onLine) {
+      banner.textContent = pending > 0
+        ? `You're offline — showing saved data. ${pending} change${pending === 1 ? '' : 's'} will sync automatically once you're back online.`
+        : "You're offline — showing the last saved copy of this page.";
+      banner.className = 'offline-banner offline-banner-offline';
+    } else if (pending > 0) {
+      banner.textContent = `Syncing ${pending} offline change${pending === 1 ? '' : 's'}…`;
+      banner.className = 'offline-banner offline-banner-syncing';
+    } else {
+      banner.className = 'offline-banner hidden';
+    }
+  }
+
+  window.addEventListener('online', refreshBanner);
+  window.addEventListener('offline', refreshBanner);
+  document.addEventListener('af:queue-changed', refreshBanner);
+  refreshBanner();
 })();

@@ -956,3 +956,28 @@ canvas { max-width: 100%; }
   color: #fff;
   animation: pulseGlow 1.2s ease-in-out infinite;
 }
+
+/* ==========================================================================
+   Offline / sync status banner
+   ========================================================================== */
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  padding: 7px 16px;
+  letter-spacing: 0.01em;
+}
+.offline-banner-offline {
+  background: var(--clay-soft);
+  color: #5a2a17;
+}
+.offline-banner-syncing {
+  background: #fdf6e5;
+  color: #6b4f14;
+  animation: shimmer 1.6s ease-in-out infinite;
+  background-image: linear-gradient(90deg, #fdf6e5 25%, #fbedc6 37%, #fdf6e5 63%);
+  background-size: 400px 100%;
+}
