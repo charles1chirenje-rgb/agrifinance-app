@@ -65,7 +65,6 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { status, resolutionNotes } = req.body;
-    // FIXED: Changed repo.update to repo.updateById to match repo.js
     const updated = await repo.updateById('events', req.params.id, {
       ...(status && { status }),
       ...(resolutionNotes !== undefined && { resolutionNotes })
@@ -80,7 +79,6 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/external-factors/:id
 router.delete('/:id', async (req, res) => {
   try {
-    // FIXED: Changed repo.delete to repo.removeById to match repo.js
     await repo.removeById('events', req.params.id);
     return res.status(200).json({ success: true });
   } catch (err) {
