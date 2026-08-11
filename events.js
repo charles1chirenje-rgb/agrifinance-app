@@ -46,6 +46,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// EXPORT FIX: Allows `app.use('/api/events', eventsRouter)` AND `const { logEvent } = require('./events')`
+// Attach logEvent directly to the exported router instance safely
+router.logEvent = logEvent;
+
 module.exports = router;
-module.exports.logEvent = logEvent;

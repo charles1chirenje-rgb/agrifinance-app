@@ -12,13 +12,11 @@ router.get('/', async (req, res) => {
       rawFactors = await repo.list('events');
     } catch (dbErr) {
       console.error('Repo fetch error in external-factors:', dbErr.message);
-      // Fallback to empty array if DB list fails so page loads cleanly
       rawFactors = [];
     }
 
     let factors = Array.isArray(rawFactors) ? rawFactors : [];
 
-    // Apply optional filters safely
     if (category) {
       factors = factors.filter(f => f && f.category === category);
     }
@@ -29,7 +27,6 @@ router.get('/', async (req, res) => {
     return res.status(200).json({ factors });
   } catch (err) {
     console.error('GET /api/external-factors fatal error:', err);
-    // Return 200 with empty array instead of 500 so UI won't break
     return res.status(200).json({ factors: [] });
   }
 });
@@ -68,7 +65,8 @@ router.post('/', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { status, resolutionNotes } = req.body;
-    const updated = await repo.update('events', req.params.id, {
+    // FIXED: Changed repo.update to repo.updateById to match repo.js
+    const updated = await repo.updateById('events', req.params.id, {
       ...(status && { status }),
       ...(resolutionNotes !== undefined && { resolutionNotes })
     });
@@ -82,7 +80,8 @@ router.patch('/:id', async (req, res) => {
 // DELETE /api/external-factors/:id
 router.delete('/:id', async (req, res) => {
   try {
-    await repo.delete('events', req.params.id);
+    // FIXED: Changed repo.delete to repo.removeById to match repo.js
+    await repo.removeById('events', req.params.id);
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error('DELETE /api/external-factors error:', err);
