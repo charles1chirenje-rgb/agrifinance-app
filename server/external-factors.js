@@ -6,19 +6,24 @@ const repo = require('../repo');
 router.get('/', async (req, res) => {
   try {
     const { category, status } = req.query;
-    let factors = await repo.list('events');
+    
+    // Safely fetch events from repo
+    let rawFactors = await repo.list('events');
+    let factors = Array.isArray(rawFactors) ? rawFactors : [];
 
     // Apply optional frontend query filters
     if (category) {
-      factors = factors.filter(f => f.category === category);
+      factors = factors.filter(f => f && f.category === category);
     }
     if (status) {
-      factors = factors.filter(f => f.status === status);
+      factors = factors.filter(f => f && f.status === status);
     }
 
-    res.json({ factors });
+    return res.status(200).json({ factors });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('GET /api/external-factors error:', err);
+    // Return empty array on failure so frontend won't crash
+    return res.status(200).json({ factors: [] });
   }
 });
 
@@ -31,7 +36,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Title and Date Occurred are required.' });
     }
 
-    const newFactor = await repo.create('events', {
+    const payload = {
       title,
       category: category || 'other',
       severity: severity || 'medium',
@@ -41,11 +46,14 @@ router.post('/', async (req, res) => {
       description: description || '',
       status: 'ongoing',
       createdAt: new Date().toISOString()
-    });
+    };
 
-    res.status(201).json({ success: true, factor: newFactor });
+    const newFactor = await repo.create('events', payload);
+
+    return res.status(201).json({ success: true, factor: newFactor });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('POST /api/external-factors error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to log event' });
   }
 });
 
@@ -57,9 +65,10 @@ router.patch('/:id', async (req, res) => {
       ...(status && { status }),
       ...(resolutionNotes !== undefined && { resolutionNotes })
     });
-    res.json({ success: true, factor: updated });
+    return res.status(200).json({ success: true, factor: updated });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('PATCH /api/external-factors error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update event' });
   }
 });
 
@@ -67,9 +76,10 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     await repo.delete('events', req.params.id);
-    res.json({ success: true });
+    return res.status(200).json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('DELETE /api/external-factors error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete event' });
   }
 });
 

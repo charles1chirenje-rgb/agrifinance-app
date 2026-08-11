@@ -46,7 +46,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Attach logEvent to the router so files importing { logEvent } won't break
-router.logEvent = logEvent;
-
+// EXPORT FIX: Allows `app.use('/api/events', eventsRouter)` AND `const { logEvent } = require('./events')`
 module.exports = router;
+module.exports.logEvent = logEvent;
