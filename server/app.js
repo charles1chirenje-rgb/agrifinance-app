@@ -36,9 +36,24 @@ app.use('/api/weather', require('./routes/weather'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/export', require('./routes/export'));
 
-app.get('/api/health', (req, res) => {
-  const { USE_MONGO } = require('./db');
-  res.json({ status: 'ok', mode: USE_MONGO ? 'mongodb' : 'local-json', time: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  const { USE_MONGO, dbPromise } = require('./db');
+  
+  let dbStatus = 'connected';
+  if (USE_MONGO && dbPromise) {
+    try {
+      await dbPromise;
+    } catch (err) {
+      dbStatus = 'error: ' + err.message;
+    }
+  }
+
+  res.json({ 
+    status: 'ok', 
+    mode: USE_MONGO ? 'mongodb' : 'local-json', 
+    dbState: dbStatus,
+    time: new Date().toISOString() 
+  });
 });
 
 // ---- Static frontend (client) ----

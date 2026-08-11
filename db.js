@@ -11,7 +11,7 @@
  *     via lowdb is used instead. Zero setup - perfect for running the project
  *     locally, for demos, and for the diploma defense/marking process.
  *
- * Every route file talks to the small store.* API below, so the rest of the
+ * Every route file talks to the small store. API below, so the rest of the
  * app never needs to know which mode is active.
  */
 const path = require('path');
@@ -22,6 +22,7 @@ const USE_MONGO = !!process.env.MONGODB_URI;
 
 let mongooseModels = null;
 let lowdbInstance = null;
+let dbPromise = null; // Stored connection promise for serverless reliability
 
 function initLocal() {
   const low = require('lowdb');
@@ -46,9 +47,13 @@ function initLocal() {
 function initMongo() {
   const mongoose = require('mongoose');
   mongoose.set('strictQuery', true);
-  mongoose.connect(process.env.MONGODB_URI).catch((err) => {
+  
+  // Save the connection promise so repo.js can await it before queries execute
+  dbPromise = mongoose.connect(process.env.MONGODB_URI).catch((err) => {
     console.error('MongoDB connection error:', err.message);
+    throw err;
   });
+
   mongooseModels = {
     User: require('./models/User'),
     Transaction: require('./models/Transaction'),
@@ -78,8 +83,10 @@ function collection(name) {
       return record;
     },
     updateById: (id, patch) => {
-      lowdbInstance.get(name).find({ _id: id }).assign({ ...patch, updatedAt: new Date().toISOString() }).write();
-      return lowdbInstance.get(name).find({ _id: id }).cloneDeep().value();
+      const target = lowdbInstance.get(name).find({ _id: id });
+      if (!target.value()) return null; // Safe guard against non-existent records
+      target.assign({ ...patch, updatedAt: new Date().toISOString() }).write();
+      return target.cloneDeep().value();
     },
     removeById: (id) => {
       lowdbInstance.get(name).remove({ _id: id }).write();
@@ -90,6 +97,7 @@ function collection(name) {
 
 module.exports = {
   USE_MONGO,
+  dbPromise,
   mongooseModels,
   collections: USE_MONGO ? null : {
     users: collection('users'),
