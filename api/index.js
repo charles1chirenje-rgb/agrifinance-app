@@ -1,3 +1,7 @@
-const app = require('../server/server.js');
-
-module.exports = app;
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/server/server.js" },
+    { "source": "/((?!api/).*)", "destination": "/public/$1" }
+  ]
+}
