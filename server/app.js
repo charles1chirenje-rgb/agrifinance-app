@@ -5,8 +5,19 @@ require('dotenv').config();
 
 const app = express();
 
-app.use(cors());
+// ---- Mobile & Cross-Origin Friendly CORS Setup ----
+app.use(cors({
+  origin: true, // Dynamically mirror request origin
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Explicitly answer HTTP OPTIONS preflight requests for mobile WebKit
+app.options('*', cors());
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ---- API routes ----
 app.use('/api/auth', require('./routes/auth'));
@@ -23,10 +34,6 @@ app.use('/api/assistant', require('./routes/assistant'));
 app.use('/api/weather', require('./routes/weather'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/export', require('./routes/export'));
-app.use('/api/score', require('./routes/score'));
-app.use('/api/advisor', require('./routes/advisor'));
-app.use('/api/marketplace', require('./routes/marketplace'));
-app.use('/api/community', require('./routes/community'));
 
 app.get('/api/health', (req, res) => {
   const { USE_MONGO } = require('./db');
@@ -34,9 +41,6 @@ app.get('/api/health', (req, res) => {
 });
 
 // ---- Static frontend (client) ----
-// In local/`npm start` mode this also serves the client. On Vercel, static
-// files in /public are served directly by the platform's static builder, so
-// this branch is mainly used for local development and non-Vercel hosting.
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('*', (req, res, next) => {
