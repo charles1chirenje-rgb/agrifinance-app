@@ -159,7 +159,18 @@
     const list = document.getElementById('list');
     try {
       const d = await API.get('/external-factors' + query());
-      currentFactors = d.factors;
+      
+      // FIX 1: Safely handle both array responses and object responses ({ factors: [...] })
+      if (Array.isArray(d)) {
+        currentFactors = d;
+      } else if (d && Array.isArray(d.factors)) {
+        currentFactors = d.factors;
+      } else if (d && Array.isArray(d.events)) {
+        currentFactors = d.events;
+      } else {
+        currentFactors = [];
+      }
+
       renderSummary();
 
       if (!currentFactors.length) {
@@ -168,28 +179,32 @@
       }
 
       list.className = 'stagger-in';
-      list.innerHTML = currentFactors.map(f => `
-        <div class="post-card">
-          <div class="post-head">
-            <div>
-              <span class="deal-badge deal-${f.severity === 'high' ? 'barter' : f.severity === 'medium' ? 'buy' : 'sell'}">${f.severity}</span>
-              <span class="tag-pill">${CATEGORY_LABEL[f.category] || f.category}</span>
+      list.innerHTML = currentFactors.map(f => {
+        // FIX 2: Check both _id and id so action buttons work on any DB structure
+        const id = f._id || f.id;
+        return `
+          <div class="post-card">
+            <div class="post-head">
+              <div>
+                <span class="deal-badge deal-${f.severity === 'high' ? 'barter' : f.severity === 'medium' ? 'buy' : 'sell'}">${f.severity || 'medium'}</span>
+                <span class="tag-pill">${CATEGORY_LABEL[f.category] || f.category || 'Other'}</span>
+              </div>
+              <span class="stamp-badge ${f.status === 'resolved' ? 'badge-repaid' : 'badge-active'}">${f.status || 'ongoing'}</span>
             </div>
-            <span class="stamp-badge ${f.status === 'resolved' ? 'badge-repaid' : 'badge-active'}">${f.status}</span>
+            <h3 style="margin:8px 0 4px;font-size:1rem;">${f.title}</h3>
+            <div class="post-author">${f.dateOccurred ? new Date(f.dateOccurred).toLocaleDateString() : ''}${f.affectedArea ? ' &middot; ' + f.affectedArea : ''}${f.estimatedImpact ? ' &middot; est. impact $' + Number(f.estimatedImpact).toLocaleString() : ''}</div>
+            ${f.description ? `<div class="post-body">${f.description}</div>` : ''}
+            ${f.resolutionNotes ? `<div class="post-body" style="color:var(--olive-deep);"><strong>Resolution:</strong> ${f.resolutionNotes}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              ${f.status !== 'resolved' ? `
+                <button class="btn btn-secondary btn-sm" data-monitor="${id}" ${f.status === 'monitoring' ? 'disabled' : ''}>Mark monitoring</button>
+                <button class="btn btn-secondary btn-sm" data-resolve="${id}">Mark resolved</button>
+              ` : ''}
+              <button class="btn btn-danger btn-sm" data-del="${id}">Delete</button>
+            </div>
           </div>
-          <h3 style="margin:8px 0 4px;font-size:1rem;">${f.title}</h3>
-          <div class="post-author">${new Date(f.dateOccurred).toLocaleDateString()}${f.affectedArea ? ' &middot; ' + f.affectedArea : ''}${f.estimatedImpact ? ' &middot; est. impact $' + Number(f.estimatedImpact).toLocaleString() : ''}</div>
-          ${f.description ? `<div class="post-body">${f.description}</div>` : ''}
-          ${f.resolutionNotes ? `<div class="post-body" style="color:var(--olive-deep);"><strong>Resolution:</strong> ${f.resolutionNotes}</div>` : ''}
-          <div style="display:flex;gap:8px;margin-top:10px;">
-            ${f.status !== 'resolved' ? `
-              <button class="btn btn-secondary btn-sm" data-monitor="${f._id}" ${f.status === 'monitoring' ? 'disabled' : ''}>Mark monitoring</button>
-              <button class="btn btn-secondary btn-sm" data-resolve="${f._id}">Mark resolved</button>
-            ` : ''}
-            <button class="btn btn-danger btn-sm" data-del="${f._id}">Delete</button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       list.querySelectorAll('[data-monitor]').forEach(btn => {
         btn.addEventListener('click', async () => {

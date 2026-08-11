@@ -7,11 +7,18 @@ router.get('/', async (req, res) => {
   try {
     const { category, status } = req.query;
     
-    // Safely fetch events from repo
-    let rawFactors = await repo.list('events');
+    let rawFactors = [];
+    try {
+      rawFactors = await repo.list('events');
+    } catch (dbErr) {
+      console.error('Repo fetch error in external-factors:', dbErr.message);
+      // Fallback to empty array if DB list fails so page loads cleanly
+      rawFactors = [];
+    }
+
     let factors = Array.isArray(rawFactors) ? rawFactors : [];
 
-    // Apply optional frontend query filters
+    // Apply optional filters safely
     if (category) {
       factors = factors.filter(f => f && f.category === category);
     }
@@ -21,8 +28,8 @@ router.get('/', async (req, res) => {
 
     return res.status(200).json({ factors });
   } catch (err) {
-    console.error('GET /api/external-factors error:', err);
-    // Return empty array on failure so frontend won't crash
+    console.error('GET /api/external-factors fatal error:', err);
+    // Return 200 with empty array instead of 500 so UI won't break
     return res.status(200).json({ factors: [] });
   }
 });
@@ -57,7 +64,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH /api/external-factors/:id (Mark Monitoring / Resolved)
+// PATCH /api/external-factors/:id
 router.patch('/:id', async (req, res) => {
   try {
     const { status, resolutionNotes } = req.body;
