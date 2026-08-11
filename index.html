@@ -68,6 +68,9 @@
   </main>
 </div>
 
+<!-- AI Assistant Floating Widget Container -->
+<div id="assistant-widget-container"></div>
+
 <script src="/js/offline-db.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/toast.js"></script>
@@ -134,7 +137,6 @@
       if (val >= 0) {
         ctx.fillText(valStr, centerX, Math.max(pad.t - 8, y - 6));
       } else {
-        // Place below negative bar, padded away from bottom category labels
         ctx.fillText(valStr, centerX, Math.min(h - pad.b + 14, y + barH + 16));
       }
 
@@ -203,7 +205,6 @@
         </div>` : ''}
       `;
 
-      // Render chart using our local self-contained function
       renderCashPositionChart(document.getElementById('miniChart'), [
         { label: 'Income', value: d.totalIncome || 0, color: '#47552f' },
         { label: 'Expense', value: -(d.totalExpense || 0), color: '#a4432a' },
