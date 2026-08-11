@@ -25,7 +25,7 @@
     <div class="card" style="margin-top:20px;">
       <h2>Return on investment by enterprise</h2>
       <p>ROI = (returns &minus; investment) &divide; investment &times; 100. Investment includes recorded acquisition/planting cost plus any linked expenses; returns include sale value plus linked income.</p>
-      <canvas id="roiChart" height="260" style="width:100%;height:260px;"></canvas>
+      <canvas id="roiChart" height="280" style="width:100%;height:280px;"></canvas>
     </div>
 
     <div class="grid grid-2" style="margin-top:20px;">
@@ -41,13 +41,12 @@
   </main>
 </div>
 
-<script src="/js/offline-db.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/toast.js"></script>
 <script src="/js/modal.js"></script>
-<script src="/js/chart.js"></script>
 <script src="/js/nav.js"></script>
 <script src="/js/assistant.js"></script>
+
 <script>
   function money(n) { return `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
   function pct(n) { return n === null || n === undefined ? '—' : `${n.toFixed(1)}%`; }
@@ -67,6 +66,69 @@
     </table>`;
   }
 
+  // --- SELF-CONTAINED CANVAS CHART RENDERER ---
+  function renderRoiChart(canvas, items) {
+    if (!canvas || !items || !items.length) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.offsetWidth;
+    const h = canvas.clientHeight || 280;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const pad = { l: 46, r: 16, t: 20, b: 50 };
+    const plotW = w - pad.l - pad.r;
+    const plotH = h - pad.t - pad.b;
+
+    const values = items.map(i => i.value);
+    const min = Math.min(0, ...values);
+    const max = Math.max(...values, 1);
+    const range = (max - min) || 1;
+    const zeroY = pad.t + plotH - ((0 - min) / range) * plotH;
+
+    // Zero Baseline
+    ctx.strokeStyle = '#d8cdb3';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, zeroY);
+    ctx.lineTo(w - pad.r, zeroY);
+    ctx.stroke();
+
+    const bw = plotW / items.length;
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+
+    items.forEach((item, i) => {
+      const val = Number(item.value || 0);
+      const barH = (Math.abs(val) / range) * plotH;
+      const x = pad.l + i * bw + bw * 0.25;
+      const barWidth = bw * 0.5;
+      const y = val >= 0 ? zeroY - barH : zeroY;
+
+      // Draw Bar
+      ctx.fillStyle = val >= 0 ? '#2e7d32' : '#a84325';
+      ctx.fillRect(x, y, barWidth, Math.max(2, barH));
+
+      const centerX = x + barWidth / 2;
+
+      // Draw Name Line 1
+      ctx.fillStyle = '#2d3748';
+      ctx.font = '600 11px sans-serif';
+      let labelText = String(item.label || '');
+      if (labelText.length > 10) labelText = labelText.substring(0, 8) + '…';
+      ctx.fillText(labelText, centerX, h - 32);
+
+      // Draw Percentage Line 2 (Strictly 16px below Name Line 1)
+      ctx.fillStyle = val >= 0 ? '#2e7d32' : '#a84325';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(`${val.toFixed(1)}%`, centerX, h - 14);
+    });
+  }
+
   async function load() {
     try {
       const d = await API.get('/roi');
@@ -83,7 +145,7 @@
       const all = [...cropRows, ...livestockRows];
 
       if (all.length) {
-        AFChart.drawBars(document.getElementById('roiChart'), all.map(r => ({ label: r.name, value: r.roiPercent })));
+        renderRoiChart(document.getElementById('roiChart'), all.map(r => ({ label: r.name, value: r.roiPercent })));
       }
 
       document.getElementById('cropRoiTable').innerHTML = roiTable(cropRows, 'Crop');

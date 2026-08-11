@@ -52,7 +52,7 @@
       <div class="card">
         <h2>Cash position</h2>
         <p>Total income vs. expense recorded to date.</p>
-        <canvas id="miniChart" height="200" style="width:100%;height:200px;"></canvas>
+        <canvas id="miniChart" height="240" style="width:100%;height:240px;"></canvas>
       </div>
 
       <div class="card">
@@ -76,10 +76,79 @@
 <script src="/js/nav.js"></script>
 <script src="/js/assistant.js"></script>
 <script>
+  // --- SELF-CONTAINED CASH CHART RENDERER (NO CHART.JS DEPENDENCY) ---
+  function renderCashPositionChart(canvas, items) {
+    if (!canvas || !items || !items.length) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.offsetWidth || 300;
+    const h = canvas.clientHeight || canvas.offsetHeight || 240;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const pad = { l: 20, r: 20, t: 30, b: 45 };
+    const plotW = w - pad.l - pad.r;
+    const plotH = h - pad.t - pad.b;
+
+    const values = items.map(i => Number(i.value || 0));
+    const min = Math.min(0, ...values);
+    const max = Math.max(...values, 1);
+    const range = (max - min) || 1;
+    const zeroY = pad.t + plotH - ((0 - min) / range) * plotH;
+
+    // Zero baseline
+    ctx.strokeStyle = '#d8cdb3';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, zeroY);
+    ctx.lineTo(w - pad.r, zeroY);
+    ctx.stroke();
+
+    const bw = plotW / items.length;
+    ctx.textAlign = 'center';
+
+    items.forEach((item, i) => {
+      const val = Number(item.value || 0);
+      const barH = (Math.abs(val) / range) * plotH;
+      const x = pad.l + i * bw + bw * 0.2;
+      const barWidth = bw * 0.6;
+      const y = val >= 0 ? zeroY - barH : zeroY;
+
+      // Draw Bar
+      ctx.fillStyle = item.color || (val >= 0 ? '#47552f' : '#a4432a');
+      ctx.fillRect(x, y, barWidth, Math.max(3, barH));
+
+      const centerX = x + barWidth / 2;
+
+      // --- DOLLAR VALUE LABEL ---
+      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      ctx.fillStyle = item.color || (val >= 0 ? '#47552f' : '#a4432a');
+      
+      const formattedVal = `$${Math.abs(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+      const valStr = val < 0 ? `-${formattedVal}` : formattedVal;
+
+      if (val >= 0) {
+        ctx.fillText(valStr, centerX, Math.max(pad.t - 8, y - 6));
+      } else {
+        // Place below negative bar, padded away from bottom category labels
+        ctx.fillText(valStr, centerX, Math.min(h - pad.b + 14, y + barH + 16));
+      }
+
+      // --- CATEGORY LABEL AT ABSOLUTE BOTTOM ---
+      ctx.fillStyle = '#565043';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillText(item.label, centerX, h - 10);
+    });
+  }
+
   const user = API.currentUser();
   let showAll = false;
 
-  if (user.role === 'admin') {
+  if (user && user.role === 'admin') {
     const wrap = document.getElementById('scopeToggleWrap');
     wrap.innerHTML = `<label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--ink-soft);">
       <input type="checkbox" id="scopeToggle" style="width:auto;"> Show whole-farm data (all users)
@@ -134,11 +203,13 @@
         </div>` : ''}
       `;
 
-      AFChart.drawBars(document.getElementById('miniChart'), [
-        { label: 'Income', value: d.totalIncome, color: '#47552f' },
-        { label: 'Expense', value: -d.totalExpense, color: '#a4432a' },
-        { label: 'Net', value: d.balance, color: '#b9822f' }
-      ].map(x => ({ ...x, value: x.value })));
+      // Render chart using our local self-contained function
+      renderCashPositionChart(document.getElementById('miniChart'), [
+        { label: 'Income', value: d.totalIncome || 0, color: '#47552f' },
+        { label: 'Expense', value: -(d.totalExpense || 0), color: '#a4432a' },
+        { label: 'Net', value: d.balance || 0, color: '#b9822f' }
+      ]);
+
     } catch (err) {
       console.error(err);
     }

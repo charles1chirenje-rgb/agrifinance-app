@@ -3,109 +3,342 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AgriFinance &middot; Farm finance &amp; management</title>
+<title>AgriFinance &middot; Dashboard</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#333f20">
-<meta name="description" content="AgriFinance is a farm finance and management platform built for Zimbabwean farmers — live crop and livestock tracking, dual-currency ledgers, a farm-to-farm marketplace, and an AI assistant grounded in your own data.">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <div class="landing-shell">
-    <section class="hero-panel">
-      <span class="hero-eyebrow">Built for Zimbabwean farmers</span>
-      <h1 class="hero-title">Run your farm like a ledger, not a guessing game.</h1>
-      <p class="hero-sub">
-        AgriFinance brings your income, loans, crops and livestock into one place —
-        with live tracking, dual-currency (USD/ZiG) bookkeeping, and an AI assistant
-        that actually knows your numbers, not generic advice.
-      </p>
-      <ul class="hero-features">
-        <li>
-          <span class="icon-badge">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 4 3 5-7"/></svg>
-          </span>
-          <div><strong>Live crop &amp; sugarcane tracking</strong><br>Auto-detected growth stage from planting date — no sensors needed.</div>
-        </li>
-        <li>
-          <span class="icon-badge">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-          </span>
-          <div><strong>Farm Health Score</strong><br>One number blending cash flow, loans, crops and livestock — updated live.</div>
-        </li>
-        <li>
-          <span class="icon-badge">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg>
-          </span>
-          <div><strong>Rainfall-aware planting advisor</strong><br>What to plant this month, cross-checked against the live weather outlook.</div>
-        </li>
-        <li>
-          <span class="icon-badge">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zM8 13c-2.67 0-8 1.34-8 4v3h10.5"/><path d="M16 13c-.29 0-.62.02-.97.05C16.36 13.86 18 15.28 18 17v3h6v-3c0-2.66-5.33-4-8-4z"/></svg>
-          </span>
-          <div><strong>Farmer-to-farmer marketplace &amp; feed</strong><br>List produce, swap tips, and flag pest or weather alerts with other users.</div>
-        </li>
-      </ul>
-      <div class="hero-stats">
-        <div class="hero-stat"><div class="value">USD / ZiG</div><div class="label">Dual currency</div></div>
-        <div class="hero-stat"><div class="value">Zero setup</div><div class="label">Works offline-friendly, no config</div></div>
-        <div class="hero-stat"><div class="value">Live</div><div class="label">8s activity refresh</div></div>
+<div class="app-shell">
+  <header class="topbar" id="topbar"></header>
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Overview</span>
+        <h1 id="pageTitle">Dashboard</h1>
       </div>
-    </section>
+      <div id="scopeToggleWrap"></div>
+    </div>
 
-    <section class="auth-panel">
-      <div class="auth-card fade-in">
-        <div class="auth-logo">
-          <span class="stamp">AF</span>
-          <h1 style="margin:0;font-size:1.5rem;">AgriFinance</h1>
+    <div class="grid grid-4" id="statCards">
+      <div class="stat-card"><span class="label">Loading…</span></div>
+    </div>
+
+    <div class="card" id="insightsCard" style="margin-top:22px;">
+      <h2 style="margin-bottom:12px;">Today's alerts &amp; insights</h2>
+      <div id="insightsBody"><p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Checking your farm…</p></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:22px;align-items:start;">
+      <div class="card">
+        <h2>Farm Health Score</h2>
+        <div id="scoreBody">
+          <div class="skeleton skeleton-block" style="margin-bottom:8px;"></div>
+          <div class="skeleton skeleton-line" style="width:70%;"></div>
         </div>
-        <p class="auth-tagline">Farm 54 &middot; financial &amp; farm management ledger</p>
-
-        <div id="errorBox" class="error-msg hidden"></div>
-
-        <form id="loginForm">
-          <div class="field">
-            <label for="email">Email</label>
-            <input type="email" id="email" required autocomplete="email" placeholder="you@farm54.co.zw">
-          </div>
-          <div class="field">
-            <label for="password">Password</label>
-            <input type="password" id="password" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">
-          </div>
-          <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Log in</button>
-        </form>
-
-        <p class="auth-switch">New to AgriFinance? <a href="/register.html">Create an account</a></p>
+        <a href="/risk-log.html" style="font-size:0.78rem;display:inline-block;margin-top:10px;">View risk log &rarr;</a>
       </div>
-    </section>
-  </div>
+      <div class="card">
+        <h2>Planting advisor</h2>
+        <div id="advisorBody">
+          <div class="skeleton skeleton-line" style="width:90%;"></div>
+          <div class="skeleton skeleton-line" style="width:60%;"></div>
+        </div>
+      </div>
+    </div>
 
-  <script src="/js/api.js"></script>
-  <script>
-    if (API.token()) location.href = '/dashboard.html';
+    <div class="grid grid-2" style="margin-top:22px;align-items:start;">
+      <div class="card">
+        <h2>Cash position</h2>
+        <p>Total income vs. expense recorded to date.</p>
+        <canvas id="miniChart" height="240" style="width:100%;height:240px;"></canvas>
+      </div>
 
-    const form = document.getElementById('loginForm');
-    const errorBox = document.getElementById('errorBox');
-    const submitBtn = document.getElementById('submitBtn');
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <h2><span class="live-dot"></span>Live activity</h2>
+          <span class="tag-pill">updates every 8s</span>
+        </div>
+        <ul class="feed" id="activityFeed">
+          <li>Loading activity…</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorBox.classList.add('hidden');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Logging in…';
-      try {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const data = await API.post('/auth/login', { email, password });
-        API.setSession(data.token, data.user);
-        location.href = '/dashboard.html';
-      } catch (err) {
-        errorBox.textContent = err.message;
-        errorBox.classList.remove('hidden');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Log in';
+<script src="/js/offline-db.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/toast.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/chart.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/assistant.js"></script>
+<script>
+  // --- SELF-CONTAINED CASH CHART RENDERER (NO CHART.JS DEPENDENCY) ---
+  function renderCashPositionChart(canvas, items) {
+    if (!canvas || !items || !items.length) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.offsetWidth || 300;
+    const h = canvas.clientHeight || canvas.offsetHeight || 240;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const pad = { l: 20, r: 20, t: 30, b: 45 };
+    const plotW = w - pad.l - pad.r;
+    const plotH = h - pad.t - pad.b;
+
+    const values = items.map(i => Number(i.value || 0));
+    const min = Math.min(0, ...values);
+    const max = Math.max(...values, 1);
+    const range = (max - min) || 1;
+    const zeroY = pad.t + plotH - ((0 - min) / range) * plotH;
+
+    // Zero baseline
+    ctx.strokeStyle = '#d8cdb3';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, zeroY);
+    ctx.lineTo(w - pad.r, zeroY);
+    ctx.stroke();
+
+    const bw = plotW / items.length;
+    ctx.textAlign = 'center';
+
+    items.forEach((item, i) => {
+      const val = Number(item.value || 0);
+      const barH = (Math.abs(val) / range) * plotH;
+      const x = pad.l + i * bw + bw * 0.2;
+      const barWidth = bw * 0.6;
+      const y = val >= 0 ? zeroY - barH : zeroY;
+
+      // Draw Bar
+      ctx.fillStyle = item.color || (val >= 0 ? '#47552f' : '#a4432a');
+      ctx.fillRect(x, y, barWidth, Math.max(3, barH));
+
+      const centerX = x + barWidth / 2;
+
+      // --- DOLLAR VALUE LABEL ---
+      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      ctx.fillStyle = item.color || (val >= 0 ? '#47552f' : '#a4432a');
+      
+      const formattedVal = `$${Math.abs(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+      const valStr = val < 0 ? `-${formattedVal}` : formattedVal;
+
+      if (val >= 0) {
+        ctx.fillText(valStr, centerX, Math.max(pad.t - 8, y - 6));
+      } else {
+        // Place below negative bar, padded away from bottom category labels
+        ctx.fillText(valStr, centerX, Math.min(h - pad.b + 14, y + barH + 16));
       }
+
+      // --- CATEGORY LABEL AT ABSOLUTE BOTTOM ---
+      ctx.fillStyle = '#565043';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillText(item.label, centerX, h - 10);
     });
-  </script>
+  }
+
+  const user = API.currentUser();
+  let showAll = false;
+
+  if (user && user.role === 'admin') {
+    const wrap = document.getElementById('scopeToggleWrap');
+    wrap.innerHTML = `<label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--ink-soft);">
+      <input type="checkbox" id="scopeToggle" style="width:auto;"> Show whole-farm data (all users)
+    </label>`;
+    document.getElementById('scopeToggle').addEventListener('change', (e) => {
+      showAll = e.target.checked;
+      loadDashboard();
+      loadFeed();
+      loadInsights();
+    });
+  }
+
+  function money(n) {
+    return `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  function q() { return showAll ? '?all=true' : ''; }
+
+  async function loadDashboard() {
+    try {
+      const d = await API.get('/dashboard' + q());
+      const cards = document.getElementById('statCards');
+      cards.innerHTML = `
+        <div class="stat-card ${d.balance >= 0 ? 'positive' : 'negative'}">
+          <span class="label">Net balance</span>
+          <div class="value">${money(d.balance)}</div>
+        </div>
+        <div class="stat-card positive">
+          <span class="label">Total income</span>
+          <div class="value">${money(d.totalIncome)}</div>
+        </div>
+        <div class="stat-card negative">
+          <span class="label">Total expense</span>
+          <div class="value">${money(d.totalExpense)}</div>
+        </div>
+        <div class="stat-card">
+          <span class="label">Outstanding loans</span>
+          <div class="value gold">${money(d.outstandingLoans)}</div>
+        </div>
+        <div class="stat-card">
+          <span class="label">Active crops</span>
+          <div class="value">${d.activeCrops} <span style="font-size:0.9rem;color:var(--ink-soft);">/ ${d.totalCrops}</span></div>
+        </div>
+        <div class="stat-card">
+          <span class="label">Livestock on farm</span>
+          <div class="value">${d.livestockCount}</div>
+        </div>
+        ${d.totalUsers !== undefined ? `
+        <div class="stat-card">
+          <span class="label">Registered users</span>
+          <div class="value">${d.totalUsers}</div>
+        </div>` : ''}
+      `;
+
+      // Render chart using our local self-contained function
+      renderCashPositionChart(document.getElementById('miniChart'), [
+        { label: 'Income', value: d.totalIncome || 0, color: '#47552f' },
+        { label: 'Expense', value: -(d.totalExpense || 0), color: '#a4432a' },
+        { label: 'Net', value: d.balance || 0, color: '#b9822f' }
+      ]);
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function timeAgo(iso) {
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  }
+
+  async function loadFeed() {
+    try {
+      const d = await API.get('/events' + q());
+      const feed = document.getElementById('activityFeed');
+      if (!d.events.length) {
+        feed.innerHTML = '<li>No activity recorded yet. Start by logging a transaction or adding a crop.</li>';
+        return;
+      }
+      feed.innerHTML = d.events.map(e => `
+        <li>
+          <span class="dot"></span>
+          <div>
+            <div>${e.message}</div>
+            <div class="time">${timeAgo(e.createdAt)}</div>
+          </div>
+        </li>
+      `).join('');
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function loadInsights() {
+    const body = document.getElementById('insightsBody');
+    try {
+      const [ruleBased, ai] = await Promise.all([
+        API.get('/notifications' + q()),
+        API.get('/assistant/insights' + q()).catch(() => ({ insights: [] }))
+      ]);
+      const combined = [
+        ...ruleBased.notifications.map(n => ({ tone: n.tone, text: n.text })),
+        ...(ai.insights || [])
+      ];
+      if (!combined.length) {
+        body.innerHTML = '<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Nothing urgent right now — everything is tracking as expected.</p>';
+        return;
+      }
+      body.innerHTML = combined.map(n => `<div class="insight-card insight-${n.tone || 'info'}">${n.text}</div>`).join('');
+    } catch (err) {
+      body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Could not load insights right now.</p>`;
+    }
+  }
+
+  async function loadScore() {
+    const body = document.getElementById('scoreBody');
+    try {
+      const d = await API.get('/score' + q());
+      if (d.score === null) {
+        body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">${d.message}</p>`;
+        return;
+      }
+      body.innerHTML = `
+        <div class="score-widget fade-in">
+          <div class="score-ring" style="--pct:${d.score};">
+            <div class="score-ring-inner">
+              <span class="num">${d.score}</span>
+              <span class="of">/ 100</span>
+            </div>
+          </div>
+          <div class="score-breakdown">
+            <span class="score-level-badge ${d.tone}">${d.level}</span>
+            ${d.breakdown.map(p => `
+              <div class="score-row">
+                <span class="row-label">${p.label}</span>
+                <span class="row-track"><span class="row-fill" style="width:${p.score}%;"></span></span>
+                <span class="row-num">${p.score}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } catch (err) {
+      body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Could not load your Farm Health Score right now.</p>`;
+    }
+  }
+
+  async function loadAdvisor() {
+    const body = document.getElementById('advisorBody');
+    try {
+      const d = await API.get('/advisor');
+      const list = (items) => items.length
+        ? items.map(c => `
+            <div class="advisor-crop">
+              <div><div class="name">${c.crop}</div><div class="note">${c.note}</div></div>
+            </div>
+          `).join('')
+        : `<p style="color:var(--ink-soft);font-size:0.82rem;margin:0;">Nothing new opens up this window.</p>`;
+
+      body.innerHTML = `
+        <div class="insight-card insight-${d.rainfall.tone}" style="margin-bottom:12px;">${d.rainfall.text}</div>
+        <div class="advisor-tabs">
+          <button class="advisor-tab active" data-tab="now">Plant now &middot; ${d.monthName}</button>
+          <button class="advisor-tab" data-tab="next">Coming up &middot; ${d.nextMonthName}</button>
+        </div>
+        <div class="advisor-list" id="advisorNow">${list(d.plantNow)}</div>
+        <div class="advisor-list hidden" id="advisorNext">${list(d.plantNextMonth)}</div>
+      `;
+      body.querySelectorAll('.advisor-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          body.querySelectorAll('.advisor-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById('advisorNow').classList.toggle('hidden', tab.dataset.tab !== 'now');
+          document.getElementById('advisorNext').classList.toggle('hidden', tab.dataset.tab !== 'next');
+        });
+      });
+    } catch (err) {
+      body.innerHTML = `<p style="color:var(--ink-soft);font-size:0.85rem;margin:0;">Could not load the planting advisor right now.</p>`;
+    }
+  }
+
+  loadDashboard();
+  loadFeed();
+  loadInsights();
+  loadScore();
+  loadAdvisor();
+  setInterval(() => { loadDashboard(); loadFeed(); loadInsights(); loadScore(); }, 8000);
+</script>
 </body>
 </html>
