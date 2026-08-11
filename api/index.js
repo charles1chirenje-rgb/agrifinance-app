@@ -2,6 +2,6 @@
 // Express app directly - every request under /api/* is routed here by
 // vercel.json, and this file simply exports the same `app` used for local
 // development in server/server.js.
-const app = require('../server/app');
+const app = require('../server/server.js');
 
 module.exports = app;
