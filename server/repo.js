@@ -5,7 +5,7 @@
  * so a single codebase supports both a MongoDB Atlas production deployment
  * and a zero-config local JSON-file demo mode.
  */
-const { USE_MONGO, mongooseModels, collections } = require('./db');
+const { USE_MONGO, dbPromise, mongooseModels, collections } = require('./db');
 
 const modelMap = () => ({
   users: mongooseModels && mongooseModels.User,
@@ -18,6 +18,13 @@ const modelMap = () => ({
   posts: mongooseModels && mongooseModels.Post
 });
 
+// Crucial for serverless: Wait for Mongoose to connect before executing queries
+async function ensureConnected() {
+  if (USE_MONGO && dbPromise) {
+    await dbPromise;
+  }
+}
+
 function toPlain(doc) {
   if (!doc) return doc;
   if (typeof doc.toObject === 'function') {
@@ -29,6 +36,7 @@ function toPlain(doc) {
 }
 
 async function create(entity, data) {
+  await ensureConnected();
   if (USE_MONGO) {
     const Model = modelMap()[entity];
     const doc = await Model.create(data);
@@ -38,6 +46,7 @@ async function create(entity, data) {
 }
 
 async function list(entity, filter = {}) {
+  await ensureConnected();
   if (USE_MONGO) {
     const Model = modelMap()[entity];
     const docs = await Model.find(filter).sort({ createdAt: -1 });
@@ -50,6 +59,7 @@ async function list(entity, filter = {}) {
 }
 
 async function findOne(entity, filter) {
+  await ensureConnected();
   if (USE_MONGO) {
     const Model = modelMap()[entity];
     const doc = await Model.findOne(filter);
@@ -63,6 +73,7 @@ async function findById(entity, id) {
 }
 
 async function updateById(entity, id, patch) {
+  await ensureConnected();
   if (USE_MONGO) {
     const Model = modelMap()[entity];
     const doc = await Model.findByIdAndUpdate(id, patch, { new: true });
@@ -72,6 +83,7 @@ async function updateById(entity, id, patch) {
 }
 
 async function removeById(entity, id) {
+  await ensureConnected();
   if (USE_MONGO) {
     const Model = modelMap()[entity];
     await Model.findByIdAndDelete(id);
