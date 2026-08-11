@@ -26,7 +26,11 @@ const API = {
     const t = this.token();
     if (t) headers['Authorization'] = `Bearer ${t}`;
 
-    const res = await fetch(this.base + path, {
+    // Fix: Strip redundant leading '/api' if passed in path to avoid '/api/api/...'
+    const cleanPath = path.startsWith('/api/') ? path.substring(4) : (path.startsWith('api/') ? '/' + path.substring(4) : path);
+    const url = this.base + (cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath);
+
+    const res = await fetch(url, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined
