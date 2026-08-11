@@ -1,54 +1,52 @@
 const express = require('express');
 const router = express.Router();
-const repo = require('../repo'); // Uses repo layer[cite: 3]
+const repo = require('../repo');
 
-// Internal audit helper (kept so other backend routes can still import and use it)
+// Helper function for system audit logging across other files
 async function logEvent(userId, entity, entityId, action, message) {
   try {
-    await repo.create('events', { userId, entity, entityId, action, message });[cite: 3]
+    await repo.create('events', { userId, entity, entityId, action, message });
   } catch (err) {
     console.error('Failed to log audit event:', err.message);
   }
 }
 
-// ---------------------------------------------------------
-// HTTP REST ENDPOINTS FOR RISK LOG / EVENTS
-// ---------------------------------------------------------
-
-// GET /api/events - Retrieve all events for Risk Log and Activity Feeds
+// GET /api/events - Retrieve events
 router.get('/', async (req, res) => {
   try {
-    const events = await repo.list('events');[cite: 3]
-    res.json({ events });
+    const events = await repo.list('events');
+    res.json({ events: events || [] });
   } catch (err) {
+    console.error('GET /api/events error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/events - Save a new external risk/event from the modal
+// POST /api/events - Create an event
 router.post('/', async (req, res) => {
   try {
-    const { title, category, severity, dateOccurred, impact, area, description } = req.body;
+    const { title, category, severity, dateOccurred, estimatedImpact, affectedArea, description } = req.body;
 
-    const newEvent = await repo.create('events', {[cite: 3]
+    const newEvent = await repo.create('events', {
       title: title || 'External Event',
-      category: category || 'General',
-      severity: severity || 'Medium',
+      category: category || 'other',
+      severity: severity || 'medium',
       dateOccurred: dateOccurred || new Date().toISOString(),
-      impact: impact ? Number(impact) : 0,
-      area: area || '',
+      estimatedImpact: estimatedImpact ? Number(estimatedImpact) : 0,
+      affectedArea: affectedArea || '',
       description: description || '',
-      status: 'Open',
-      userId: req.user ? req.user.id : null
+      status: 'ongoing',
+      createdAt: new Date().toISOString()
     });
 
     res.status(201).json({ success: true, event: newEvent });
   } catch (err) {
+    console.error('POST /api/events error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Attach helper function to router object so both require() patterns work
+// Attach logEvent to the router so files importing { logEvent } won't break
 router.logEvent = logEvent;
 
 module.exports = router;
