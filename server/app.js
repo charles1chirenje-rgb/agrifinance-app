@@ -29,6 +29,7 @@ app.use('/api/livestock', require('./routes/livestock'));
 app.use('/api/forecast', require('./routes/forecast'));
 app.use('/api/roi', require('./routes/roi'));
 app.use('/api/events', require('./routes/events'));
+app.use('/api/external-factors', require('./routes/external-factors'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/assistant', require('./routes/assistant'));
 app.use('/api/weather', require('./routes/weather'));
