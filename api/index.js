@@ -1,7 +1,4 @@
-{
-  "version": 2,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/server/server.js" },
-    { "source": "/((?!api/).*)", "destination": "/public/$1" }
-  ]
-}
+// api/index.js
+const app = require('../server/app');
+
+module.exports = app;
