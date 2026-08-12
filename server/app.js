@@ -9,7 +9,7 @@ const app = express();
 app.use(cors({
   origin: true, // Dynamically mirror request origin
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
@@ -37,6 +37,8 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/export', require('./routes/export'));
 app.use('/api/score', require('./routes/score'));
 app.use('/api/advisor', require('./routes/advisor'));
+app.use('/api/community', require('./routes/community'));
+app.use('/api/marketplace', require('./routes/marketplace'));
 
 app.get('/api/health', async (req, res) => {
   const { USE_MONGO, dbPromise } = require('./db');
