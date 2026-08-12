@@ -35,6 +35,8 @@ app.use('/api/assistant', require('./routes/assistant'));
 app.use('/api/weather', require('./routes/weather'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/export', require('./routes/export'));
+app.use('/api/score', require('./routes/score'));
+app.use('/api/advisor', require('./routes/advisor'));
 
 app.get('/api/health', async (req, res) => {
   const { USE_MONGO, dbPromise } = require('./db');
