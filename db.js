@@ -4,27 +4,24 @@
  * Two modes, chosen automatically:
  *
  *  1. MONGO MODE  - if process.env.MONGODB_URI is set, Mongoose connects to
- *     MongoDB Atlas (recommended for the live Vercel deployment, since
- *     Vercel's filesystem is read-only/ephemeral in production).
+ *     MongoDB Atlas. Includes a connection timeout guard for serverless.
  *
- *  2. LOCAL MODE  - if no MONGODB_URI is set, a JSON file (server/data/db.json)
- *     via lowdb is used instead. Zero setup - perfect for running the project
- *     locally, for demos, and for the diploma defense/marking process.
- *
- * Every route file talks to the small store. API below, so the rest of the
- * app never needs to know which mode is active.
+ *  2. LOCAL MODE  - if no MONGODB_URI is set (or if connection fails/times out),
+ *     a JSON file (server/data/db.json) via lowdb is used instead.
  */
 const path = require('path');
 const fs = require('fs');
 const { v4: uuid } = require('uuid');
 
-const USE_MONGO = !!process.env.MONGODB_URI;
+// Allow forcing local mode via env if needed
+const USE_MONGO = !!process.env.MONGODB_URI && process.env.FORCE_LOCAL !== 'true';
 
 let mongooseModels = null;
 let lowdbInstance = null;
-let dbPromise = null; // Stored connection promise for serverless reliability
+let dbPromise = null;
 
 function initLocal() {
+  if (lowdbInstance) return;
   const low = require('lowdb');
   const FileSync = require('lowdb/adapters/FileSync');
   const dataDir = path.join(__dirname, 'data');
@@ -37,9 +34,9 @@ function initLocal() {
     loans: [],
     crops: [],
     livestock: [],
-    events: [], // audit / activity feed powering the "live" dashboards
-    listings: [], // community marketplace: produce/inputs/equipment for sale or barter
-    posts: [] // community knowledge feed: tips, questions, alerts, success stories
+    events: [],
+    listings: [],
+    posts: []
   }).write();
   lowdbInstance = db;
 }
@@ -48,10 +45,15 @@ function initMongo() {
   const mongoose = require('mongoose');
   mongoose.set('strictQuery', true);
   
-  // Save the connection promise so repo.js can await it before queries execute
-  dbPromise = mongoose.connect(process.env.MONGODB_URI).catch((err) => {
-    console.error('MongoDB connection error:', err.message);
-    throw err;
+  // Wrap connection with a strict timeout so serverless never hangs indefinitely
+  dbPromise = Promise.race([
+    mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('MongoDB connection timeout')), 5000))
+  ]).catch((err) => {
+    console.warn('MongoDB connection failed or timed out, falling back to local lowdb mode:', err.message);
+    // Fall back to local mode gracefully if MongoDB is unreachable
+    initLocal();
+    return null;
   });
 
   mongooseModels = {
@@ -66,13 +68,15 @@ function initMongo() {
   };
 }
 
-if (USE_MONGO) initMongo();
-else initLocal();
+if (USE_MONGO) {
+  initMongo();
+} else {
+  initLocal();
+}
 
-// ---------------------------------------------------------------------------
-// Generic collection helpers (used only in LOCAL mode)
-// ---------------------------------------------------------------------------
+// Generic collection helpers (used in LOCAL mode)
 function collection(name) {
+  if (!lowdbInstance) initLocal();
   return {
     all: () => lowdbInstance.get(name).cloneDeep().value(),
     find: (predicate) => lowdbInstance.get(name).find(predicate).cloneDeep().value(),
@@ -84,7 +88,7 @@ function collection(name) {
     },
     updateById: (id, patch) => {
       const target = lowdbInstance.get(name).find({ _id: id });
-      if (!target.value()) return null; // Safe guard against non-existent records
+      if (!target.value()) return null;
       target.assign({ ...patch, updatedAt: new Date().toISOString() }).write();
       return target.cloneDeep().value();
     },
@@ -96,17 +100,25 @@ function collection(name) {
 }
 
 module.exports = {
-  USE_MONGO,
+  get USE_MONGO() {
+    // If mongo failed and fell back to local, reflect that dynamically
+    return USE_MONGO && lowdbInstance === null;
+  },
   dbPromise,
-  mongooseModels,
-  collections: USE_MONGO ? null : {
-    users: collection('users'),
-    transactions: collection('transactions'),
-    loans: collection('loans'),
-    crops: collection('crops'),
-    livestock: collection('livestock'),
-    events: collection('events'),
-    listings: collection('listings'),
-    posts: collection('posts')
+  get mongooseModels() {
+    return mongooseModels;
+  },
+  get collections() {
+    if (!lowdbInstance) initLocal();
+    return {
+      users: collection('users'),
+      transactions: collection('transactions'),
+      loans: collection('loans'),
+      crops: collection('crops'),
+      livestock: collection('livestock'),
+      events: collection('events'),
+      listings: collection('listings'),
+      posts: collection('posts')
+    };
   }
 };
