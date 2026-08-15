@@ -37,15 +37,6 @@ function toPlain(doc) {
 
 async function create(entity, data) {
   await ensureConnected();
-  
-  // Normalize and supply safe defaults for Mongoose validation schemas if needed
-  if (entity === 'events') {
-    data.message = data.message || data.description || data.title || 'Event logged';
-    data.action = data.action || 'Monitor';
-    data.entityId = data.entityId || 'general';
-    data.entity = data.entity || data.category || 'Farm';
-    data.userId = data.userId || data.farmerId || 'system-user';
-  }
 
   if (USE_MONGO) {
     const Model = modelMap()[entity];
