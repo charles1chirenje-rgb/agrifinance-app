@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
       affectedArea: affectedArea || '',
       description: description || '',
       status: 'ongoing',
-      // Safe fallbacks for audit logging fields required by Mongoose schemas
+      // Explicitly satisfy Mongoose schema validation requirements for the 'events' model
       message: message || description || title || 'Event logged',
       action: action || 'Monitor',
       entityId: entityId || 'general',
