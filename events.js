@@ -5,7 +5,13 @@ const repo = require('../repo');
 // Helper function for system audit logging across other files
 async function logEvent(userId, entity, entityId, action, message) {
   try {
-    await repo.create('events', { userId, entity, entityId, action, message });
+    await repo.create('events', { 
+      userId: userId || 'system-user', 
+      entity: entity || 'System', 
+      entityId: entityId || 'general', 
+      action: action || 'Action', 
+      message: message || 'Event logged' 
+    });
   } catch (err) {
     console.error('Failed to log audit event:', err.message);
   }
@@ -25,7 +31,7 @@ router.get('/', async (req, res) => {
 // POST /api/events - Create an event
 router.post('/', async (req, res) => {
   try {
-    const { title, category, severity, dateOccurred, estimatedImpact, affectedArea, description } = req.body;
+    const { title, category, severity, dateOccurred, estimatedImpact, affectedArea, description, userId, entity, entityId, action, message } = req.body;
 
     const newEvent = await repo.create('events', {
       title: title || 'External Event',
@@ -36,6 +42,12 @@ router.post('/', async (req, res) => {
       affectedArea: affectedArea || '',
       description: description || '',
       status: 'ongoing',
+      // Safe fallbacks for audit logging fields required by Mongoose schemas
+      message: message || description || title || 'Event logged',
+      action: action || 'Monitor',
+      entityId: entityId || 'general',
+      entity: entity || category || 'Farm',
+      userId: userId || 'system-user',
       createdAt: new Date().toISOString()
     });
 
