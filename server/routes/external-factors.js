@@ -17,6 +17,15 @@ router.get('/', async (req, res) => {
 
     let factors = Array.isArray(rawFactors) ? rawFactors : [];
 
+    // Map stored database documents back to the frontend risk log structure
+    factors = factors.map(f => ({
+      ...f,
+      title: f.title || f.message || 'External Event',
+      category: f.category || f.entity || 'other',
+      severity: f.severity || 'medium',
+      status: f.status || 'ongoing'
+    }));
+
     if (category) {
       factors = factors.filter(f => f && f.category === category);
     }
@@ -36,10 +45,10 @@ router.post('/', async (req, res) => {
   try {
     const { title, category, severity, dateOccurred, estimatedImpact, affectedArea, description } = req.body;
 
-    // Ensure title is provided
     const eventTitle = title || description || 'External Event';
 
     const payload = {
+      // Pass both custom fields and Mongoose schema required fields to prevent stripping
       title: eventTitle,
       category: category || 'other',
       severity: severity || 'medium',
@@ -48,10 +57,10 @@ router.post('/', async (req, res) => {
       affectedArea: affectedArea || '',
       description: description || '',
       status: 'ongoing',
-      // Required fields for Mongoose Event model validation
-      message: description || eventTitle,
+      // Mongoose required schema fields
+      message: eventTitle,
       action: 'Monitor',
-      entityId: 'risk-log',
+      entityId: affectedArea || 'general',
       entity: category || 'Farm',
       userId: 'system-user',
       createdAt: new Date().toISOString()
