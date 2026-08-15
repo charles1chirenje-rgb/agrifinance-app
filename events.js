@@ -31,9 +31,23 @@ router.get('/', async (req, res) => {
 // POST /api/events - Create an event
 router.post('/', async (req, res) => {
   try {
-    const { title, category, severity, dateOccurred, estimatedImpact, affectedArea, description, userId, entity, entityId, action, message } = req.body;
+    const { 
+      title, 
+      category, 
+      severity, 
+      dateOccurred, 
+      estimatedImpact, 
+      affectedArea, 
+      description, 
+      userId, 
+      entity, 
+      entityId, 
+      action, 
+      message 
+    } = req.body;
 
-    const newEvent = await repo.create('events', {
+    // Construct the payload ensuring every Mongoose required field is present
+    const eventPayload = {
       title: title || 'External Event',
       category: category || 'other',
       severity: severity || 'medium',
@@ -42,14 +56,16 @@ router.post('/', async (req, res) => {
       affectedArea: affectedArea || '',
       description: description || '',
       status: 'ongoing',
-      // Explicitly satisfy Mongoose schema validation requirements for the 'events' model
+      // Guaranteed values for Mongoose required fields
       message: message || description || title || 'Event logged',
       action: action || 'Monitor',
       entityId: entityId || 'general',
       entity: entity || category || 'Farm',
       userId: userId || 'system-user',
       createdAt: new Date().toISOString()
-    });
+    };
+
+    const newEvent = await repo.create('events', eventPayload);
 
     res.status(201).json({ success: true, event: newEvent });
   } catch (err) {
