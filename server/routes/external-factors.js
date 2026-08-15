@@ -49,6 +49,12 @@ router.post('/', async (req, res) => {
       affectedArea: affectedArea || '',
       description: description || '',
       status: 'ongoing',
+      // Required fields for Mongoose Event model validation
+      message: description || title || 'Risk event logged',
+      action: 'Monitor',
+      entityId: 'risk-log',
+      entity: category || 'Farm',
+      userId: 'system-user',
       createdAt: new Date().toISOString()
     };
 
