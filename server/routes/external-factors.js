@@ -36,21 +36,20 @@ router.post('/', async (req, res) => {
   try {
     const { title, category, severity, dateOccurred, estimatedImpact, affectedArea, description } = req.body;
 
-    if (!title || !dateOccurred) {
-      return res.status(400).json({ error: 'Title and Date Occurred are required.' });
-    }
+    // Ensure title is provided
+    const eventTitle = title || description || 'External Event';
 
     const payload = {
-      title,
+      title: eventTitle,
       category: category || 'other',
       severity: severity || 'medium',
-      dateOccurred,
+      dateOccurred: dateOccurred || new Date().toISOString(),
       estimatedImpact: estimatedImpact ? Number(estimatedImpact) : 0,
       affectedArea: affectedArea || '',
       description: description || '',
       status: 'ongoing',
       // Required fields for Mongoose Event model validation
-      message: description || title || 'Risk event logged',
+      message: description || eventTitle,
       action: 'Monitor',
       entityId: 'risk-log',
       entity: category || 'Farm',
